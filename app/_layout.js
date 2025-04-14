@@ -58,6 +58,18 @@ export default function RootLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="borrowing"
+        options={{
+          title: 'Borrowing',
+        }}
+      />
+      <Stack.Screen
+        name="investment"
+        options={{
+          title: 'Investment',
+        }}
+      />
     </Stack>
   );
 }

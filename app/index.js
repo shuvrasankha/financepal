@@ -245,7 +245,7 @@ export default function Home() {
           {formatINR(amount)}
         </Text>
   
-        {/* Add button only for Total Expenses card */}
+        {/* Add button for specific cards */}
         {label === "Total Expenses" && (
           <View style={styles.cardActions}>
             <TouchableOpacity 
@@ -254,6 +254,42 @@ export default function Home() {
             >
               <Ionicons name="add-circle-outline" size={20} color="#6366f1" />
               <Text style={styles.addButtonText}>Add Expense</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {label === "Lent" && (
+          <View style={styles.cardActions}>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push('/lending')}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#10b981" />
+              <Text style={styles.addButtonText}>Add Lending</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {label === "Borrowed" && (
+          <View style={styles.cardActions}>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push('/borrowing')}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#ef4444" />
+              <Text style={styles.addButtonText}>Add Borrowing</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {label === "Investments" && (
+          <View style={styles.cardActions}>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push('/investment')}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
+              <Text style={styles.addButtonText}>Add Investment</Text>
             </TouchableOpacity>
           </View>
         )}
