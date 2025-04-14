@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
@@ -317,14 +317,3 @@ export default function Home() {
     </ScrollView>
   );
 }
-
-module.exports = function(api) {
-  api.cache(true);
-  return {
-    presets: ['babel-preset-expo'],
-    plugins: [
-      'react-native-reanimated/plugin',
-      'expo-router/babel'
-    ],
-  };
-};

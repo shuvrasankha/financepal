@@ -399,8 +399,14 @@ const Expense = () => {
             style={styles.input}
             placeholder="Enter amount in ₹"
             value={amount}
-            onChangeText={setAmount}
-            keyboardType="decimal-pad"
+            onChangeText={(text) => {
+              // Allow only numbers and a single decimal point
+              const numericValue = text.replace(/[^0-9.]/g, '');
+              if (/^\d*\.?\d*$/.test(numericValue)) {
+                setAmount(numericValue);
+              }
+            }}
+            keyboardType="numeric" // Ensures numeric keyboard is displayed
             maxLength={10}
             placeholderTextColor="#9ca3af"
           />
