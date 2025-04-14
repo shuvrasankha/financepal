@@ -4,166 +4,201 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
 import { Ionicons } from '@expo/vector-icons';
+import { auth } from '../firebase';
+import styles from '../styles/LoginStyles';
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedInput, setFocusedInput] = useState(null);
   const [error, setError] = useState({
     email: '',
     password: '',
     general: '',
   });
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
     setError({ email: '', password: '', general: '' });
 
     if (!email.includes('@')) {
-      setError((prev) => ({ ...prev, email: 'Invalid email format.' }));
+      setErrorMessage('Please enter a valid email address');
+      setShowErrorModal(true);
       return;
     }
 
     if (password.length < 6) {
-      setError((prev) => ({ ...prev, password: 'Password must be at least 6 characters.' }));
+      setErrorMessage('Password must be at least 6 characters');
+      setShowErrorModal(true);
       return;
     }
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      setShowSuccess(true); // Show success modal instead of immediate navigation
     } catch (e) {
-      let message = e.message;
-
-      if (message.includes('auth/user-not-found')) {
-        setError((prev) => ({ ...prev, email: 'No account found with this email.' }));
-      } else if (message.includes('auth/wrong-password')) {
-        setError((prev) => ({ ...prev, password: 'Incorrect password.' }));
+      if (e.code === 'auth/user-not-found') {
+        setErrorMessage('No account found with this email');
+      } else if (e.code === 'auth/wrong-password') {
+        setErrorMessage('Incorrect password');
       } else {
-        setError((prev) => ({ ...prev, general: 'Login failed. Please try again.' }));
+        setErrorMessage('Login failed. Please try again.');
       }
+      setShowErrorModal(true);
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>🔐 Login</Text>
-
-      <TextInput
-        style={[styles.input, error.email && styles.errorInput]}
-        placeholder="Email"
-        placeholderTextColor="#aaa"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        onChangeText={setEmail}
-      />
-      {error.email ? <Text style={styles.errorText}>{error.email}</Text> : null}
-
-      <View style={[styles.passwordContainer, error.password && styles.errorInput]}>
-        <TextInput
-          style={styles.passwordInput}
-          placeholder="Password"
-          placeholderTextColor="#aaa"
-          secureTextEntry={!showPassword}
-          onChangeText={setPassword}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color="#777" />
-        </TouchableOpacity>
+  // Add success modal component
+  const SuccessModal = () => (
+    <Modal
+      visible={showSuccess}
+      transparent
+      animationType="fade"
+    >
+      <View style={styles.successModal}>
+        <View style={styles.successModalContent}>
+          <View style={styles.successIcon}>
+            <Ionicons name="checkmark" size={32} color="#ffffff" />
+          </View>
+          <Text style={styles.successTitle}>Welcome Back!</Text>
+          <Text style={styles.successMessage}>
+            You've successfully signed in to your account.
+          </Text>
+          <TouchableOpacity 
+            style={styles.successButton}
+            onPress={() => {
+              setShowSuccess(false);
+              router.replace('/');
+            }}
+          >
+            <Text style={styles.successButtonText}>Continue to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      {error.password ? <Text style={styles.errorText}>{error.password}</Text> : null}
+    </Modal>
+  );
 
-      {error.general ? <Text style={styles.errorText}>{error.general}</Text> : null}
+  // Add error modal component
+  const ErrorModal = () => (
+    <Modal
+      visible={showErrorModal}
+      transparent
+      animationType="fade"
+    >
+      <View style={styles.errorModal}>
+        <View style={styles.errorModalContent}>
+          <View style={styles.errorIcon}>
+            <Ionicons name="alert" size={32} color="#ffffff" />
+          </View>
+          <Text style={styles.errorTitle}>Login Failed</Text>
+          <Text style={styles.errorMessage}>
+            {errorMessage}
+          </Text>
+          <TouchableOpacity 
+            style={styles.errorButton}
+            onPress={() => setShowErrorModal(false)}
+          >
+            <Text style={styles.errorButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Log In</Text>
-      </TouchableOpacity>
+  return (
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <SuccessModal />
+      <ErrorModal />
+      
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.logo}>✨</Text>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Sign in to continue</Text>
+        </View>
 
-      <Text style={styles.link} onPress={() => router.push('/signup')}>
-        Don’t have an account? <Text style={styles.linkBold}>Sign up</Text>
-      </Text>
-    </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Email Address</Text>
+          <TextInput
+            style={[
+              styles.input,
+              focusedInput === 'email' && styles.inputFocused,
+              error.email && { borderColor: styles.errorText.color }
+            ]}
+            placeholder="Enter your email"
+            placeholderTextColor="#9ca3af"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+            onFocus={() => setFocusedInput('email')}
+            onBlur={() => setFocusedInput(null)}
+          />
+          {error.email ? <Text style={styles.errorText}>{error.email}</Text> : null}
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Password</Text>
+          <View style={[
+            styles.passwordContainer,
+            focusedInput === 'password' && styles.inputFocused,
+            error.password && { borderColor: styles.errorText.color }
+          ]}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Enter your password"
+              placeholderTextColor="#9ca3af"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={setPassword}
+              onFocus={() => setFocusedInput('password')}
+              onBlur={() => setFocusedInput(null)}
+            />
+            <TouchableOpacity 
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons 
+                name={showPassword ? 'eye-off' : 'eye'} 
+                size={20} 
+                color="#6b7280" 
+              />
+            </TouchableOpacity>
+          </View>
+          {error.password ? <Text style={styles.errorText}>{error.password}</Text> : null}
+        </View>
+
+        {error.general ? <Text style={styles.errorText}>{error.general}</Text> : null}
+
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>Sign In</Text>
+        </TouchableOpacity>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account?</Text>
+          <TouchableOpacity onPress={() => router.push('/signup')}>
+            <Text style={styles.linkText}>Create Account</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 32,
-    alignSelf: 'center',
-  },
-  input: {
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    backgroundColor: '#fff',
-    fontSize: 16,
-  },
-  passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    marginTop: 16,
-    backgroundColor: '#fff',
-  },
-  passwordInput: {
-    flex: 1,
-    fontSize: 16,
-  },
-  errorInput: {
-    borderColor: '#ff4d4f',
-  },
-  errorText: {
-    color: '#ff4d4f',
-    fontSize: 13,
-    marginTop: 6,
-    marginBottom: 6,
-    marginLeft: 4,
-  },
-  button: {
-    backgroundColor: '#007bff',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  link: {
-    marginTop: 20,
-    textAlign: 'center',
-    fontSize: 15,
-    color: '#444',
-  },
-  linkBold: {
-    fontWeight: 'bold',
-    color: '#007bff',
-  },
-});

@@ -18,7 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebase';
-import styles from '../styles/ExpenseStyles';
+import styles, { CATEGORY_COLORS } from '../styles/ExpenseStyles';
 
 const CATEGORIES = [
   'Food',
@@ -306,6 +306,13 @@ const Expense = () => {
     } catch (err) {
       console.error('Delete error:', err);
       Alert.alert('Error', 'Failed to delete expense. Please try again.');
+    }
+  };
+
+  const onExpenseDateChange = (event, selectedDate) => {
+    setShowExpenseDatePicker(false);
+    if (selectedDate) {
+      setExpenseDate(selectedDate);
     }
   };
 
@@ -630,7 +637,10 @@ const Expense = () => {
                     <View style={styles.expenseHeader}>
                       <Text style={styles.expenseAmount}>₹{item.amount.toFixed(2)}</Text>
                       {item.category && (
-                        <View style={styles.categoryBadge}>
+                        <View style={[
+                          styles.categoryBadge, 
+                          { backgroundColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.Others }
+                        ]}>
                           <Text style={styles.categoryBadgeText}>{item.category}</Text>
                         </View>
                       )}
@@ -718,7 +728,10 @@ const Expense = () => {
                         <Text style={styles.expenseAmount}>₹{item.amount.toFixed(2)}</Text>
                         <View style={styles.expenseHeaderRight}>
                           {item.category && (
-                            <View style={styles.categoryBadge}>
+                            <View style={[
+                              styles.categoryBadge, 
+                              { backgroundColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.Others }
+                            ]}>
                               <Text style={styles.categoryBadgeText}>{item.category}</Text>
                             </View>
                           )}

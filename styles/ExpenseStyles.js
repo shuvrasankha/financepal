@@ -1,6 +1,19 @@
 // ExpenseStyles.js
 import { StyleSheet } from 'react-native';
 
+export const CATEGORY_COLORS = {
+  Food: '#22c55e',         // Green
+  Transport: '#3b82f6',    // Blue
+  Shopping: '#f59e0b',     // Amber
+  Entertainment: '#8b5cf6', // Purple
+  Bills: '#ef4444',        // Red
+  Healthcare: '#06b6d4',   // Cyan
+  Education: '#ec4899',    // Pink
+  Travel: '#f97316',       // Orange
+  Groceries: '#10b981',    // Emerald
+  Others: '#6b7280',       // Gray
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -159,16 +172,15 @@ const styles = StyleSheet.create({
     color: '#1f2937',
   },
   categoryBadge: {
-    backgroundColor: '#e0e7ff',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 8,
     marginBottom: 4,
   },
   categoryBadgeText: {
-    color: '#4f46e5',
     fontWeight: '500',
     fontSize: 12,
+    color: '#ffffff',
   },
   expenseDate: {
     fontSize: 12,
