@@ -28,14 +28,35 @@ export default StyleSheet.create({
     elevation: 3,
   },
   cardLabel: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  cardDescription: {
+    fontSize: 13,
+    color: '#6b7280',
+    lineHeight: 18,
   },
   cardAmount: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginTop: 8,
-    color: '#222',
+    marginTop: 12,
+    color: '#111827',
+  },
+  cardTitleSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  cardIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   negative: {
     color: '#ff4d4f',
@@ -60,6 +81,17 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  yearSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  yearSelectorLabel: {
+    fontSize: 15,
+    color: '#6b7280',
+    marginRight: 8,
+    fontWeight: '500',
   },
   yearSelectorButton: {
     flexDirection: 'row',
@@ -112,6 +144,20 @@ export default StyleSheet.create({
     borderTopColor: '#f0f0f0',
     paddingTop: 12,
   },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f7ff',
+    padding: 10,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  addButtonText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#6366f1',
+    fontWeight: '500',
+  },
   cardButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -124,5 +170,33 @@ export default StyleSheet.create({
     fontSize: 14,
     color: '#6366f1',
     fontWeight: '500',
+  },
+  welcomeSection: {
+    marginBottom: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  welcomeText: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#1f2937',
+    marginBottom: 12,
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  // Add these new styles
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  settingsButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
   },
 });

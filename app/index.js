@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
@@ -11,6 +11,7 @@ export default function Home() {
   const user = auth.currentUser;
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState('');
 
   const [totals, setTotals] = useState({
     expenses: 0,
@@ -76,20 +77,45 @@ export default function Home() {
     }
   };
 
+  // Update the fetchUserData function
+  const fetchUserData = async (userId) => {
+    try {
+      // Get reference to users collection
+      const usersRef = collection(db, 'users');
+      // Create query looking for document with matching userId
+      const q = query(usersRef, where('userId', '==', userId));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Get the first matching document
+        const userData = querySnapshot.docs[0].data();
+        console.log('Found user data:', userData); // Debug log
+        setUserName(userData.firstName || '');
+      } else {
+        console.log('No user document found'); // Debug log
+        setUserName('');
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      setUserName('');
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchSummaryData(selectedYear);
     setRefreshing(false);
   }, [selectedYear]);
 
+  // Update the useEffect hook that checks authentication
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
         console.log('User authenticated:', user.uid);
-        // Wait for a moment to ensure auth is completely initialized
-        setTimeout(() => {
-          fetchSummaryData(selectedYear);
-        }, 1000);
+        // Fetch user data immediately after authentication
+        await fetchUserData(user.uid);
+        // Then fetch other data
+        fetchSummaryData(selectedYear);
       } else {
         console.log('No user, redirecting to login');
         router.replace('/login');
@@ -157,78 +183,83 @@ export default function Home() {
     );
   };
 
-  const StatCard = ({ label, amount, showYearSelector }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Text style={styles.cardLabel}>{label}</Text>
-        {showYearSelector && (
-          <TouchableOpacity 
-            style={styles.yearSelectorButton}
-            onPress={() => setShowYearPicker(true)}
-          >
-            <Text style={styles.yearSelectorText}>{selectedYear}</Text>
-            <Ionicons name="chevron-down" size={16} color="#6366f1" />
-          </TouchableOpacity>
-        )}
-      </View>
-      <Text style={[styles.cardAmount, amount < 0 && styles.negative]}>
-        {formatINR(amount)}
-      </Text>
-      
-      {/* Add buttons based on card type */}
-      <View style={styles.cardActions}>
+  const getCardDetails = (label) => {
+    switch (label) {
+      case "Total Expenses":
+        return {
+          icon: "wallet-outline",
+          color: "#6366f1",
+          description: "Your total spending"
+        };
+      case "Lent":
+        return {
+          icon: "arrow-up-outline",
+          color: "#10b981",
+          description: "Money you've lent"
+        };
+      case "Borrowed":
+        return {
+          icon: "arrow-down-outline",
+          color: "#ef4444", 
+          description: "Money you've borrowed"
+        };
+      case "Pending Repayments":
+        return {
+          icon: "time-outline",
+          color: "#f59e0b",
+          description: "Awaiting repayments"
+        };
+      case "Investments":
+        return {
+          icon: "trending-up-outline",
+          color: "#3b82f6",
+          description: "Your investments"
+        };
+      default:
+        return {
+          icon: "help-outline",
+          color: "#6b7280",
+          description: "Other"
+        };
+    }
+  };
+
+  const StatCard = ({ label, amount }) => {
+    const cardDetails = getCardDetails(label);
+    const router = useRouter();
+  
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleSection}>
+            <View style={[styles.cardIcon, { backgroundColor: cardDetails.color + '15' }]}>
+              <Ionicons name={cardDetails.icon} size={24} color={cardDetails.color} />
+            </View>
+            <View>
+              <Text style={styles.cardLabel}>{label}</Text>
+              <Text style={styles.cardDescription}>{cardDetails.description}</Text>
+            </View>
+          </View>
+        </View>
+        <Text style={[styles.cardAmount, amount < 0 && styles.negative]}>
+          {formatINR(amount)}
+        </Text>
+  
+        {/* Add button only for Total Expenses card */}
         {label === "Total Expenses" && (
-          <TouchableOpacity 
-            style={styles.cardButton}
-            onPress={() => router.push('/expense')}
-          >
-            <Ionicons name="add-circle-outline" size={20} color="#6366f1" />
-            <Text style={styles.cardButtonText}>Add Expense</Text>
-          </TouchableOpacity>
-        )}
-        
-        {label === "Lent" && (
-          <TouchableOpacity 
-            style={styles.cardButton}
-            onPress={() => router.push('/lending')}
-          >
-            <Ionicons name="arrow-forward-circle-outline" size={20} color="#6366f1" />
-            <Text style={styles.cardButtonText}>Add Lending</Text>
-          </TouchableOpacity>
-        )}
-        
-        {label === "Borrowed" && (
-          <TouchableOpacity 
-            style={styles.cardButton}
-            onPress={() => router.push('/lending')}
-          >
-            <Ionicons name="arrow-back-circle-outline" size={20} color="#6366f1" />
-            <Text style={styles.cardButtonText}>Add Borrowing</Text>
-          </TouchableOpacity>
-        )}
-        
-        {label === "Pending Repayments" && (
-          <TouchableOpacity 
-            style={styles.cardButton}
-            onPress={() => router.push('/repayments')}
-          >
-            <Ionicons name="refresh-circle-outline" size={20} color="#6366f1" />
-            <Text style={styles.cardButtonText}>Manage Repayments</Text>
-          </TouchableOpacity>
-        )}
-        
-        {label === "Investments" && (
-          <TouchableOpacity 
-            style={styles.cardButton}
-            onPress={() => router.push('/investments')}
-          >
-            <Ionicons name="trending-up" size={20} color="#6366f1" />
-            <Text style={styles.cardButtonText}>Add Investment</Text>
-          </TouchableOpacity>
+          <View style={styles.cardActions}>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push('/expense')}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#6366f1" />
+              <Text style={styles.addButtonText}>Add Expense</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
-    </View>
-  );
+    );
+  };
 
   const NavButton = ({ icon, label, onPress }) => (
     <TouchableOpacity style={styles.navButton} onPress={onPress}>
@@ -244,9 +275,31 @@ export default function Home() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      <Text style={styles.header}>Dashboard</Text>
+      <View style={styles.welcomeSection}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.welcomeText}>
+            Hi {userName ? `${userName}!` : 'there!'} 
+          </Text>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => router.push('/settings')}
+          >
+            <Ionicons name="settings-outline" size={24} color="#6b7280" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.yearSelectorRow}>
+          <Text style={styles.yearSelectorLabel}>Showing data for</Text>
+          <TouchableOpacity 
+            style={styles.yearSelectorButton}
+            onPress={() => setShowYearPicker(true)}
+          >
+            <Text style={styles.yearSelectorText}>{selectedYear}</Text>
+            <Ionicons name="chevron-down" size={16} color="#6366f1" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      <StatCard label="Total Expenses" amount={totals.expenses} showYearSelector={true} />
+      <StatCard label="Total Expenses" amount={totals.expenses} />
       <StatCard label="Lent" amount={totals.lent} />
       <StatCard label="Borrowed" amount={totals.borrowed} />
       <StatCard label="Pending Repayments" amount={totals.pendingRepayments} />
@@ -264,3 +317,14 @@ export default function Home() {
     </ScrollView>
   );
 }
+
+module.exports = function(api) {
+  api.cache(true);
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: [
+      'react-native-reanimated/plugin',
+      'expo-router/babel'
+    ],
+  };
+};
