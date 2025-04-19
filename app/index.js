@@ -23,6 +23,7 @@ export default function Home() {
   });
 
   const [pendingLent, setPendingLent] = useState(0);
+  const [investmentTotal, setInvestmentTotal] = useState(0);
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showYearPicker, setShowYearPicker] = useState(false);
@@ -106,6 +107,20 @@ export default function Home() {
     }
   };
 
+  // Fetch total investment amount from Firestore
+  const fetchInvestmentTotal = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const q = query(collection(db, 'investments'), where('userId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      const total = snapshot.docs.reduce((sum, doc) => sum + (Number(doc.data().amount) || 0), 0);
+      setInvestmentTotal(total);
+    } catch (e) {
+      setInvestmentTotal(0);
+    }
+  };
+
   // Update the fetchUserData function
   const fetchUserData = async (userId) => {
     try {
@@ -159,6 +174,7 @@ export default function Home() {
     if (user) {
       fetchSummaryData(selectedYear);
       fetchPendingLent();
+      fetchInvestmentTotal();
     }
   }, [selectedYear]);
 
@@ -385,7 +401,7 @@ export default function Home() {
         <StatCard label="Total Expenses" amount={totals.expenses} />
         <StatCard label="Lent" amount={pendingLent} />
         <StatCard label="Borrowed" amount={totals.borrowed} />
-        <StatCard label="Investments" amount={totals.investments} />
+        <StatCard label="Investments" amount={investmentTotal} />
 
         {/* <View style={styles.navSection}>
           <NavButton icon="wallet" label="Add Expense" onPress={() => router.push('/expense')} />
