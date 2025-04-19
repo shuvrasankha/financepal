@@ -76,6 +76,9 @@ const Expense = () => {
   // User state
   const [userId, setUserId] = useState(null);
   
+  // Add state for input highlighting
+  const [inputHighlight, setInputHighlight] = useState({ amount: false, category: false });
+
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -207,7 +210,18 @@ const Expense = () => {
       return;
     }
 
-    if (!amount || !category) {
+    let hasError = false;
+    const newHighlight = { amount: false, category: false };
+    if (!amount) {
+      newHighlight.amount = true;
+      hasError = true;
+    }
+    if (!category) {
+      newHighlight.category = true;
+      hasError = true;
+    }
+    setInputHighlight(newHighlight);
+    if (hasError) {
       Alert.alert('Error', 'Amount and category are required.');
       return;
     }
@@ -393,11 +407,10 @@ const Expense = () => {
       <View style={styles.card}>
         <View style={styles.inputGroup}>
           <View style={styles.labelContainer}>
-            <Ionicons name="wallet-outline" size={18} color="#6366f1" />
-            <Text style={styles.label}>Amount</Text>
+            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Amount</Text>
           </View>
           <TextInput
-            style={styles.input}
+            style={[styles.input, inputHighlight.amount && { borderColor: '#ef4444', borderWidth: 2 }]}
             placeholder="Enter amount in ₹"
             value={amount}
             onChangeText={(text) => {
@@ -406,6 +419,7 @@ const Expense = () => {
               if (/^\d*\.?\d*$/.test(numericValue)) {
                 setAmount(numericValue);
               }
+              if (inputHighlight.amount) setInputHighlight((prev) => ({ ...prev, amount: false }));
             }}
             keyboardType="numeric" // Ensures numeric keyboard is displayed
             maxLength={10}
@@ -415,8 +429,7 @@ const Expense = () => {
 
         <View style={styles.inputGroup}>
           <View style={styles.labelContainer}>
-            <Ionicons name="pricetag-outline" size={18} color="#6366f1" />
-            <Text style={styles.label}>Category</Text>
+            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Category</Text>
           </View>
           {/* Category grid selection UI */}
           <View style={{
@@ -436,12 +449,15 @@ const Expense = () => {
                   borderRadius: 16,
                   backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
                   borderWidth: category === item ? 2 : 1,
-                  borderColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb',
+                  borderColor: inputHighlight.category && !category ? '#ef4444' : (category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb'),
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: 8,
                 }}
-                onPress={() => setCategory(item)}
+                onPress={() => {
+                  setCategory(item);
+                  if (inputHighlight.category) setInputHighlight((prev) => ({ ...prev, category: false }));
+                }}
                 activeOpacity={0.8}
               >
                 <Ionicons
@@ -463,8 +479,7 @@ const Expense = () => {
 
         <View style={styles.inputGroup}>
           <View style={styles.labelContainer}>
-            <Ionicons name="calendar-outline" size={18} color="#6366f1" />
-            <Text style={styles.label}>Expense Date</Text>
+            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Expense Date</Text>
           </View>
           {Platform.OS !== 'web' ? (
             <>
@@ -511,8 +526,7 @@ const Expense = () => {
 
         <View style={styles.inputGroup}>
           <View style={styles.labelContainer}>
-            <Ionicons name="create-outline" size={18} color="#6366f1" />
-            <Text style={styles.label}>Note</Text>
+            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Note</Text>
           </View>
           <TextInput
             style={styles.input}
