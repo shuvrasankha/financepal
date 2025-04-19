@@ -121,30 +121,6 @@ export default function Home() {
     }
   };
 
-  // Update the fetchUserData function
-  const fetchUserData = async (userId) => {
-    try {
-      // Get reference to users collection
-      const usersRef = collection(db, 'users');
-      // Create query looking for document with matching userId
-      const q = query(usersRef, where('userId', '==', userId));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        // Get the first matching document
-        const userData = querySnapshot.docs[0].data();
-        console.log('Found user data:', userData); // Debug log
-        setUserName(userData.firstName || '');
-      } else {
-        console.log('No user document found'); // Debug log
-        setUserName('');
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setUserName('');
-    }
-  };
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchSummaryData(selectedYear);
@@ -153,12 +129,10 @@ export default function Home() {
 
   // Update the useEffect hook that checks authentication
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         console.log('User authenticated:', user.uid);
-        // Fetch user data immediately after authentication
-        await fetchUserData(user.uid);
-        // Then fetch other data
+        // Only fetch summary data, do not fetch user data
         fetchSummaryData(selectedYear);
       } else {
         console.log('No user, redirecting to login');
@@ -377,7 +351,7 @@ export default function Home() {
         <View style={styles.welcomeSection}>
           <View style={styles.headerContainer}>
             <Text style={styles.welcomeText}>
-              Hi {userName ? `${userName}!` : 'there!'} 
+              Hi there!
             </Text>
             <TouchableOpacity 
               style={styles.settingsButton}
