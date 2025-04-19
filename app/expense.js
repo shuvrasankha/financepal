@@ -10,7 +10,8 @@ import {
   Alert, 
   ActivityIndicator, 
   Modal,
-  Platform
+  Platform,
+  Alert as RNAlert
 } from 'react-native';
 import { getFirestore, collection, addDoc, getDocs, query, where, deleteDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -19,6 +20,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebase';
 import styles, { CATEGORY_COLORS } from '../styles/ExpenseStyles';
+
+// Map categories to Ionicons icon names
+const CATEGORY_ICONS = {
+  Food: 'fast-food-outline',
+  Transport: 'car-outline',
+  Shopping: 'cart-outline',
+  Bills: 'document-text-outline',
+  Entertainment: 'musical-notes-outline',
+  Health: 'medkit-outline',
+  Education: 'school-outline',
+  Others: 'apps-outline',
+};
 
 const CATEGORIES = [
   'Food',
@@ -269,18 +282,6 @@ const Expense = () => {
     setNote('');
   };
 
-  // Separate function to handle the confirmation dialog
-  const confirmDelete = async (id) => {
-      console.log('Deleting expense with ID:', id);
-      try {
-        await deleteDoc(doc(db, 'expenses', id));
-        setExpenses((prev) => prev.filter((exp) => exp.id !== id));
-        Alert.alert('Deleted successfully');
-      } catch (err) {
-        console.error('Delete error:', err);
-      }
-    };
-
   // Separate function to handle the actual deletion logic
   const deleteExpense = async (id) => {
     console.log('Deleting expense with ID:', id);
@@ -417,56 +418,47 @@ const Expense = () => {
             <Ionicons name="pricetag-outline" size={18} color="#6366f1" />
             <Text style={styles.label}>Category</Text>
           </View>
-          <TouchableOpacity
-            style={styles.input}
-            onPress={() => setShowCategoryModal(true)}
-          >
-            <Text style={[styles.inputText, !category && styles.placeholderText]}>
-              {category || 'Select a category'}
-            </Text>
-          </TouchableOpacity>
-
-          <Modal
-            visible={showCategoryModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowCategoryModal(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Select Category</Text>
-                  <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
-                    <Ionicons name="close" size={24} color="#6366f1" />
-                  </TouchableOpacity>
-                </View>
-                <ScrollView style={styles.categoryList}>
-                  {CATEGORIES.map((item) => (
-                    <TouchableOpacity
-                      key={item}
-                      style={[
-                        styles.categoryItem,
-                        category === item && styles.selectedCategory,
-                      ]}
-                      onPress={() => {
-                        setCategory(item);
-                        setShowCategoryModal(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.categoryItemText,
-                          category === item && styles.selectedCategoryText,
-                        ]}
-                      >
-                        {item}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            </View>
-          </Modal>
+          {/* Category grid selection UI */}
+          <View style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            marginTop: 8,
+            marginBottom: 4,
+          }}>
+            {CATEGORIES.map((item, idx) => (
+              <TouchableOpacity
+                key={item}
+                style={{
+                  width: '23%', // 4 columns with space
+                  aspectRatio: 1,
+                  marginBottom: 12,
+                  borderRadius: 16,
+                  backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
+                  borderWidth: category === item ? 2 : 1,
+                  borderColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 8,
+                }}
+                onPress={() => setCategory(item)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={CATEGORY_ICONS[item]}
+                  size={28}
+                  color={category === item ? '#fff' : (CATEGORY_COLORS[item] || '#6366f1')}
+                  style={{ marginBottom: 6 }}
+                />
+                <Text style={{
+                  color: category === item ? '#fff' : '#374151',
+                  fontWeight: category === item ? 'bold' : '500',
+                  fontSize: 13,
+                  textAlign: 'center',
+                }}>{item}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
@@ -638,39 +630,84 @@ const Expense = () => {
               data={expenses}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
-                <View style={styles.expenseContainer}>
-                  <View style={styles.expenseInfo}>
-                    <View style={styles.expenseHeader}>
-                      <Text style={styles.expenseAmount}>₹{item.amount.toFixed(2)}</Text>
-                      {item.category && (
-                        <View style={[
-                          styles.categoryBadge, 
-                          { backgroundColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.Others }
-                        ]}>
-                          <Text style={styles.categoryBadgeText}>{item.category}</Text>
-                        </View>
-                      )}
-                    </View>
-                    {item.note && <Text style={styles.noteText}>{item.note}</Text>}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#fff',
+                  borderRadius: 16,
+                  padding: 14,
+                  marginBottom: 12,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}>
+                  {/* Category Icon */}
+                  <View style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 12,
+                    backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 16,
+                  }}>
+                    <Ionicons name={CATEGORY_ICONS[item.category]} size={24} color="#fff" />
                   </View>
-
-                  <View style={styles.buttonGroup}>
+                  {/* Info */}
+                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                    {item.note ? (
+                      <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+                    ) : null}
+                    <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
+                  </View>
+                  {/* Actions */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
                     <TouchableOpacity
-                      style={styles.editBtn}
+                      style={{
+                        backgroundColor: '#f3f4f6',
+                        borderRadius: 10,
+                        width: 38,
+                        height: 38,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: '#6366f1',
+                        shadowColor: '#6366f1',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 2,
+                        elevation: 2,
+                      }}
                       onPress={() => handleUpdate(item)}
                       accessible={true}
                       accessibilityLabel="Edit expense"
                     >
-                      <Ionicons name="pencil-outline" size={18} color="#fff" />
+                      <Ionicons name="pencil" size={20} color="#6366f1" />
                     </TouchableOpacity>
-
                     <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => confirmDelete(item.id)}
+                      style={{
+                        backgroundColor: '#fef2f2',
+                        borderRadius: 10,
+                        width: 38,
+                        height: 38,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        borderWidth: 1,
+                        borderColor: '#ef4444',
+                        shadowColor: '#ef4444',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 2,
+                        elevation: 2,
+                      }}
+                      onPress={() => deleteExpense(item.id)}
                       accessible={true}
                       accessibilityLabel="Delete expense"
                     >
-                      <Ionicons name="trash-outline" size={18} color="#fff" />
+                      <Ionicons name="trash" size={20} color="#ef4444" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -738,7 +775,10 @@ const Expense = () => {
                               styles.categoryBadge, 
                               { backgroundColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.Others }
                             ]}>
-                              <Text style={styles.categoryBadgeText}>{item.category}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name={CATEGORY_ICONS[item.category]} size={14} color="#fff" style={{ marginRight: 4 }} />
+                                <Text style={styles.categoryBadgeText}>{item.category}</Text>
+                              </View>
                             </View>
                           )}
                           <Text style={styles.expenseDate}>{expDate.toLocaleDateString()}</Text>
@@ -759,7 +799,7 @@ const Expense = () => {
 
                       <TouchableOpacity
                         style={styles.deleteBtn}
-                        onPress={() => confirmDelete(item.id)}
+                        onPress={() => deleteExpense(item.id)}
                         accessible={true}
                         accessibilityLabel="Delete expense"
                       >
