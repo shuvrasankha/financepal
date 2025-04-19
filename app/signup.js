@@ -13,7 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { setDoc, doc } from 'firebase/firestore';
 import styles from '../styles/SignupStyles';
 
 export default function Signup() {
@@ -64,6 +65,14 @@ export default function Signup() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      // Add user data to Firestore 'users' collection with UID as document ID
+      await setDoc(doc(db, 'users', uid), {
+        firstName,
+        lastName,
+        email,
+        uid,
+      });
       setShowSuccess(true); // Show success modal instead of Alert
     } catch (error) {
       let errorMessage = 'An error occurred during signup';

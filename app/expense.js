@@ -353,9 +353,9 @@ const Expense = () => {
     }
     setShowAddModal(true); // Open the modal for editing
     
-    // Scroll to the top of the form
+    // Scroll to the top of the form (web only)
     if (typeof window !== 'undefined') {
-      window.scrollTo && window.scrollTo(0, 0);
+      window.scrollTo && window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -438,6 +438,7 @@ const Expense = () => {
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
+        {/* Removed Hello! greeting as requested */}
         <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5 }]}>Expenses</Text>
         {/* Total Expenses Card */}
         <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
