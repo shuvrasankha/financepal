@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import { G, Text as SvgText, Line } from 'react-native-svg';
 import { View as RNView } from 'react-native';
+import BottomNavBar from './components/BottomNavBar';
 
 const months = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -124,121 +125,124 @@ const ExpenseAnalysis = () => {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Expense Analysis</Text>
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[styles.toggleButton, viewMode === 'monthly' && styles.toggleButtonActive]}
-          onPress={() => setViewMode('monthly')}
-        >
-          <Text style={[styles.toggleButtonText, viewMode === 'monthly' && styles.toggleButtonTextActive]}>Monthly</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleButton, viewMode === 'yearly' && styles.toggleButtonActive]}
-          onPress={() => setViewMode('yearly')}
-        >
-          <Text style={[styles.toggleButtonText, viewMode === 'yearly' && styles.toggleButtonTextActive]}>Yearly</Text>
-        </TouchableOpacity>
-      </View>
-      {viewMode === 'monthly' ? (
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Monthly & Yearly Spendings</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 8}}>
-            <LineChart
-              data={{
-                labels: months,
-                datasets: [
-                  { data: monthlyTotals.map(v => Number(v.toFixed(2))) }
-                ]
-              }}
-              width={chartWidth}
-              height={180}
-              yAxisLabel="₹"
-              chartConfig={chartConfig}
-              style={styles.chart}
-              bezier
-              fromZero
-            />
-          </ScrollView>
-          <Text style={styles.totalText}>Yearly Total: <Text style={{color:'#6366f1',fontWeight:'bold'}}>₹{yearlyTotal.toFixed(2)}</Text></Text>
+    <>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.title}>Expense Analysis</Text>
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'monthly' && styles.toggleButtonActive]}
+            onPress={() => setViewMode('monthly')}
+          >
+            <Text style={[styles.toggleButtonText, viewMode === 'monthly' && styles.toggleButtonTextActive]}>Monthly</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, viewMode === 'yearly' && styles.toggleButtonActive]}
+            onPress={() => setViewMode('yearly')}
+          >
+            <Text style={[styles.toggleButtonText, viewMode === 'yearly' && styles.toggleButtonTextActive]}>Yearly</Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Yearly Spendings</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 8}}>
-            <LineChart
-              data={{
-                labels: yearlyTotalsArr.map(y => y.year),
-                datasets: [
-                  { data: yearlyTotalsArr.map(y => Number(y.total.toFixed(2))) }
-                ]
-              }}
-              width={Math.max(yearlyTotalsArr.length * 60, 260)}
-              height={180}
-              yAxisLabel="₹"
-              chartConfig={chartConfig}
-              style={styles.chart}
-              bezier
-              fromZero
-            />
-          </ScrollView>
-        </View>
-      )}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Spendings by Category</Text>
-        <View style={styles.pieContainer}>
-          <View style={styles.pieChartSection}>
-            <View style={styles.pieWrapper}>
-              <PieChart
-                data={Object.entries(categoryTotals).map(([cat, amt], i) => ({
-                  name: cat,
-                  population: amt,
-                  color: chartColors[i % chartColors.length],
-                  legendFontColor: '#22223b',
-                  legendFontSize: 13,
-                }))}
-                width={140}
-                height={140}
-                chartConfig={{
-                  ...pieChartConfig,
-                  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+        {viewMode === 'monthly' ? (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Monthly & Yearly Spendings</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 8}}>
+              <LineChart
+                data={{
+                  labels: months,
+                  datasets: [
+                    { data: monthlyTotals.map(v => Number(v.toFixed(2))) }
+                  ]
                 }}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                center={[10, 0]}
-                absolute
-                hasLegend={false}
+                width={chartWidth}
+                height={180}
+                yAxisLabel="₹"
+                chartConfig={chartConfig}
+                style={styles.chart}
+                bezier
+                fromZero
               />
+            </ScrollView>
+            <Text style={styles.totalText}>Yearly Total: <Text style={{color:'#6366f1',fontWeight:'bold'}}>₹{yearlyTotal.toFixed(2)}</Text></Text>
+          </View>
+        ) : (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Yearly Spendings</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 8}}>
+              <LineChart
+                data={{
+                  labels: yearlyTotalsArr.map(y => y.year),
+                  datasets: [
+                    { data: yearlyTotalsArr.map(y => Number(y.total.toFixed(2))) }
+                  ]
+                }}
+                width={Math.max(yearlyTotalsArr.length * 60, 260)}
+                height={180}
+                yAxisLabel="₹"
+                chartConfig={chartConfig}
+                style={styles.chart}
+                bezier
+                fromZero
+              />
+            </ScrollView>
+          </View>
+        )}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Spendings by Category</Text>
+          <View style={styles.pieContainer}>
+            <View style={styles.pieChartSection}>
+              <View style={styles.pieWrapper}>
+                <PieChart
+                  data={Object.entries(categoryTotals).map(([cat, amt], i) => ({
+                    name: cat,
+                    population: amt,
+                    color: chartColors[i % chartColors.length],
+                    legendFontColor: '#22223b',
+                    legendFontSize: 13,
+                  }))}
+                  width={140}
+                  height={140}
+                  chartConfig={{
+                    ...pieChartConfig,
+                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                  }}
+                  accessor="population"
+                  backgroundColor="transparent"
+                  paddingLeft="15"
+                  center={[10, 0]}
+                  absolute
+                  hasLegend={false}
+                />
+              </View>
+            </View>
+            <View style={styles.legendSection}>
+              {Object.entries(categoryTotals).map(([cat, amt], i) => (
+                <View key={cat} style={styles.legendItem}>
+                  <View style={styles.legendRow}>
+                    <Text style={styles.legendNumber}>{cat === 'Transport' ? '172' : cat === 'Food' ? '50' : Math.round(amt)} {cat}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
-          <View style={styles.legendSection}>
-            {Object.entries(categoryTotals).map(([cat, amt], i) => (
-              <View key={cat} style={styles.legendItem}>
-                <View style={styles.legendRow}>
-                  <Text style={styles.legendNumber}>{cat === 'Transport' ? '172' : cat === 'Food' ? '50' : Math.round(amt)} {cat}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
         </View>
-      </View>
-      {monthlyChange !== null && (
-        <View style={styles.monthlyChangeCard}>
-          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',width:'100%'}}>
-            <Text style={styles.monthlyChangeText}>
-              Your monthly expense has {monthlyChange > 0 ? 'increased' : monthlyChange < 0 ? 'decreased' : 'not changed'} by 
-              <Text style={[styles.monthlyChangePercent, { color: monthlyChange > 0 ? '#ef4444' : monthlyChange < 0 ? '#22c55e' : '#22223b' }]}> {Math.abs(monthlyChange).toFixed(1)}%</Text>
-            </Text>
-            {monthlyChange > 0 ? (
-              <Text style={styles.arrowUp}>▲</Text>
-            ) : monthlyChange < 0 ? (
-              <Text style={styles.arrowDown}>▼</Text>
-            ) : null}
+        {monthlyChange !== null && (
+          <View style={styles.monthlyChangeCard}>
+            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',width:'100%'}}>
+              <Text style={styles.monthlyChangeText}>
+                Your monthly expense has {monthlyChange > 0 ? 'increased' : monthlyChange < 0 ? 'decreased' : 'not changed'} by 
+                <Text style={[styles.monthlyChangePercent, { color: monthlyChange > 0 ? '#ef4444' : monthlyChange < 0 ? '#22c55e' : '#22223b' }]}> {Math.abs(monthlyChange).toFixed(1)}%</Text>
+              </Text>
+              {monthlyChange > 0 ? (
+                <Text style={styles.arrowUp}>▲</Text>
+              ) : monthlyChange < 0 ? (
+                <Text style={styles.arrowDown}>▼</Text>
+              ) : null}
+            </View>
           </View>
-        </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
+      <BottomNavBar />
+    </>
   );
 };
 

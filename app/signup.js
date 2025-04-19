@@ -106,111 +106,113 @@ export default function Signup() {
   );
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      {/* Add the SuccessModal component */}
-      <SuccessModal />
-      
-      <ScrollView 
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+    <>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
       >
-        <View style={styles.header}>
-          <Text style={styles.logo}>✨</Text>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join us today</Text>
-        </View>
+        {/* Add the SuccessModal component */}
+        <SuccessModal />
+        
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.logo}>✨</Text>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join us today</Text>
+          </View>
 
-        <View style={styles.formRow}>
-          <View style={[styles.inputContainer, styles.inputHalf]}>
-            <Text style={styles.inputLabel}>First Name</Text>
+          <View style={styles.formRow}>
+            <View style={[styles.inputContainer, styles.inputHalf]}>
+              <Text style={styles.inputLabel}>First Name</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedInput === 'firstName' && styles.inputFocused,
+                  errors.firstName && { borderColor: '#ef4444' }
+                ]}
+                placeholder="John"
+                value={firstName}
+                onChangeText={setFirstName}
+                onFocus={() => setFocusedInput('firstName')}
+                onBlur={() => setFocusedInput(null)}
+              />
+              {errors.firstName ? 
+                <Text style={styles.errorText}>{errors.firstName}</Text> : null}
+            </View>
+
+            <View style={[styles.inputContainer, styles.inputHalf]}>
+              <Text style={styles.inputLabel}>Last Name</Text>
+              <TextInput
+                style={[
+                  styles.input,
+                  focusedInput === 'lastName' && styles.inputFocused,
+                  errors.lastName && { borderColor: '#ef4444' }
+                ]}
+                placeholder="Doe"
+                value={lastName}
+                onChangeText={setLastName}
+                onFocus={() => setFocusedInput('lastName')}
+                onBlur={() => setFocusedInput(null)}
+              />
+              {errors.lastName ? 
+                <Text style={styles.errorText}>{errors.lastName}</Text> : null}
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email Address</Text>
             <TextInput
               style={[
                 styles.input,
-                focusedInput === 'firstName' && styles.inputFocused,
-                errors.firstName && { borderColor: '#ef4444' }
+                focusedInput === 'email' && styles.inputFocused,
+                errors.email && { borderColor: '#ef4444' }
               ]}
-              placeholder="John"
-              value={firstName}
-              onChangeText={setFirstName}
-              onFocus={() => setFocusedInput('firstName')}
+              placeholder="your@email.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+              onFocus={() => setFocusedInput('email')}
               onBlur={() => setFocusedInput(null)}
             />
-            {errors.firstName ? 
-              <Text style={styles.errorText}>{errors.firstName}</Text> : null}
+            {errors.email ? 
+              <Text style={styles.errorText}>{errors.email}</Text> : null}
           </View>
 
-          <View style={[styles.inputContainer, styles.inputHalf]}>
-            <Text style={styles.inputLabel}>Last Name</Text>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Password</Text>
             <TextInput
               style={[
                 styles.input,
-                focusedInput === 'lastName' && styles.inputFocused,
-                errors.lastName && { borderColor: '#ef4444' }
+                focusedInput === 'password' && styles.inputFocused,
+                errors.password && { borderColor: '#ef4444' }
               ]}
-              placeholder="Doe"
-              value={lastName}
-              onChangeText={setLastName}
-              onFocus={() => setFocusedInput('lastName')}
+              placeholder="Min. 6 characters"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              onFocus={() => setFocusedInput('password')}
               onBlur={() => setFocusedInput(null)}
             />
-            {errors.lastName ? 
-              <Text style={styles.errorText}>{errors.lastName}</Text> : null}
+            {errors.password ? 
+              <Text style={styles.errorText}>{errors.password}</Text> : null}
           </View>
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'email' && styles.inputFocused,
-              errors.email && { borderColor: '#ef4444' }
-            ]}
-            placeholder="your@email.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-            onFocus={() => setFocusedInput('email')}
-            onBlur={() => setFocusedInput(null)}
-          />
-          {errors.email ? 
-            <Text style={styles.errorText}>{errors.email}</Text> : null}
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Password</Text>
-          <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'password' && styles.inputFocused,
-              errors.password && { borderColor: '#ef4444' }
-            ]}
-            placeholder="Min. 6 characters"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            onFocus={() => setFocusedInput('password')}
-            onBlur={() => setFocusedInput(null)}
-          />
-          {errors.password ? 
-            <Text style={styles.errorText}>{errors.password}</Text> : null}
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={handleSignup}>
-          <Text style={styles.buttonText}>Create Account</Text>
-        </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => router.push('/login')}>
-            <Text style={styles.linkText}>Sign In</Text>
+          <TouchableOpacity style={styles.button} onPress={handleSignup}>
+            <Text style={styles.buttonText}>Create Account</Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account?</Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.linkText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </>
   );
 }
