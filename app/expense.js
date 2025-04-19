@@ -399,472 +399,474 @@ const Expense = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{isEditing ? 'Edit Expense' : 'Add New Expense'}</Text>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Amount</Text>
-          </View>
-          <TextInput
-            style={[styles.input, inputHighlight.amount && { borderColor: '#ef4444', borderWidth: 2 }]}
-            placeholder="Enter amount in ₹"
-            value={amount}
-            onChangeText={(text) => {
-              // Allow only numbers and a single decimal point
-              const numericValue = text.replace(/[^0-9.]/g, '');
-              if (/^\d*\.?\d*$/.test(numericValue)) {
-                setAmount(numericValue);
-              }
-              if (inputHighlight.amount) setInputHighlight((prev) => ({ ...prev, amount: false }));
-            }}
-            keyboardType="numeric" // Ensures numeric keyboard is displayed
-            maxLength={10}
-            placeholderTextColor="#9ca3af"
-          />
+    <>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{isEditing ? 'Edit Expense' : 'Add New Expense'}</Text>
         </View>
 
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Category</Text>
+        <View style={styles.card}>
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Amount</Text>
+            </View>
+            <TextInput
+              style={[styles.input, inputHighlight.amount && { borderColor: '#ef4444', borderWidth: 2 }]}
+              placeholder="Enter amount in ₹"
+              value={amount}
+              onChangeText={(text) => {
+                // Allow only numbers and a single decimal point
+                const numericValue = text.replace(/[^0-9.]/g, '');
+                if (/^\d*\.?\d*$/.test(numericValue)) {
+                  setAmount(numericValue);
+                }
+                if (inputHighlight.amount) setInputHighlight((prev) => ({ ...prev, amount: false }));
+              }}
+              keyboardType="numeric" // Ensures numeric keyboard is displayed
+              maxLength={10}
+              placeholderTextColor="#9ca3af"
+            />
           </View>
-          {/* Category grid selection UI */}
-          <View style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            marginTop: 8,
-            marginBottom: 4,
-          }}>
-            {CATEGORIES.map((item, idx) => (
+
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Category</Text>
+            </View>
+            {/* Category grid selection UI */}
+            <View style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              marginTop: 8,
+              marginBottom: 4,
+            }}>
+              {CATEGORIES.map((item, idx) => (
+                <TouchableOpacity
+                  key={item}
+                  style={{
+                    width: '23%', // 4 columns with space
+                    aspectRatio: 1,
+                    marginBottom: 12,
+                    borderRadius: 16,
+                    backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
+                    borderWidth: category === item ? 2 : 1,
+                    borderColor: inputHighlight.category && !category ? '#ef4444' : (category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb'),
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 8,
+                  }}
+                  onPress={() => {
+                    setCategory(item);
+                    if (inputHighlight.category) setInputHighlight((prev) => ({ ...prev, category: false }));
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={CATEGORY_ICONS[item]}
+                    size={28}
+                    color={category === item ? '#fff' : (CATEGORY_COLORS[item] || '#6366f1')}
+                    style={{ marginBottom: 6 }}
+                  />
+                  <Text style={{
+                    color: category === item ? '#fff' : '#374151',
+                    fontWeight: category === item ? 'bold' : '500',
+                    fontSize: 13,
+                    textAlign: 'center',
+                  }}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Expense Date</Text>
+            </View>
+            {Platform.OS !== 'web' ? (
+              <>
+                <TouchableOpacity 
+                  style={styles.input}
+                  onPress={() => setShowExpenseDatePicker(true)}
+                >
+                  <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
+                </TouchableOpacity>
+                {showExpenseDatePicker && (
+                  <DateTimePicker
+                    value={expenseDate}
+                    mode="date"
+                    display="default"
+                    onChange={onExpenseDateChange}
+                  />
+                )}
+              </>
+            ) : (
               <TouchableOpacity
-                key={item}
-                style={{
-                  width: '23%', // 4 columns with space
-                  aspectRatio: 1,
-                  marginBottom: 12,
-                  borderRadius: 16,
-                  backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
-                  borderWidth: category === item ? 2 : 1,
-                  borderColor: inputHighlight.category && !category ? '#ef4444' : (category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb'),
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 8,
-                }}
-                onPress={() => {
-                  setCategory(item);
-                  if (inputHighlight.category) setInputHighlight((prev) => ({ ...prev, category: false }));
-                }}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name={CATEGORY_ICONS[item]}
-                  size={28}
-                  color={category === item ? '#fff' : (CATEGORY_COLORS[item] || '#6366f1')}
-                  style={{ marginBottom: 6 }}
-                />
-                <Text style={{
-                  color: category === item ? '#fff' : '#374151',
-                  fontWeight: category === item ? 'bold' : '500',
-                  fontSize: 13,
-                  textAlign: 'center',
-                }}>{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Expense Date</Text>
-          </View>
-          {Platform.OS !== 'web' ? (
-            <>
-              <TouchableOpacity 
                 style={styles.input}
-                onPress={() => setShowExpenseDatePicker(true)}
+                onPress={() => {
+                  const newDate = prompt(
+                    'Enter expense date (YYYY-MM-DD):',
+                    expenseDate.toISOString().split('T')[0]
+                  );
+                  if (newDate) {
+                    const parsedDate = new Date(newDate);
+                    if (!isNaN(parsedDate)) {
+                      setExpenseDate(parsedDate);
+                    } else {
+                      Alert.alert(
+                        'Invalid Date',
+                        'Please enter a valid date in YYYY-MM-DD format.'
+                      );
+                    }
+                  }
+                }}
               >
                 <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
               </TouchableOpacity>
-              {showExpenseDatePicker && (
-                <DateTimePicker
-                  value={expenseDate}
-                  mode="date"
-                  display="default"
-                  onChange={onExpenseDateChange}
-                />
-              )}
-            </>
-          ) : (
-            <TouchableOpacity
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Note</Text>
+            </View>
+            <TextInput
               style={styles.input}
-              onPress={() => {
-                const newDate = prompt(
-                  'Enter expense date (YYYY-MM-DD):',
-                  expenseDate.toISOString().split('T')[0]
-                );
-                if (newDate) {
-                  const parsedDate = new Date(newDate);
-                  if (!isNaN(parsedDate)) {
-                    setExpenseDate(parsedDate);
-                  } else {
-                    Alert.alert(
-                      'Invalid Date',
-                      'Please enter a valid date in YYYY-MM-DD format.'
-                    );
-                  }
-                }
-              }}
+              placeholder="Optional note"
+              value={note}
+              onChangeText={setNote}
+              placeholderTextColor="#9ca3af"
+            />
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.button, isEditing ? styles.updateButton : styles.saveButton]} 
+            onPress={addExpense}
+          >
+            <Text style={styles.buttonText}>
+              {isEditing ? 'Update Expense' : 'Save Expense'}
+            </Text>
+          </TouchableOpacity>
+          
+          {isEditing && (
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={resetForm}
             >
-              <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
+              <Text style={styles.cancelButtonText}>Cancel Editing</Text>
             </TouchableOpacity>
           )}
         </View>
 
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Note</Text>
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Optional note"
-            value={note}
-            onChangeText={setNote}
-            placeholderTextColor="#9ca3af"
-          />
+        <View style={styles.viewToggleContainer}>
+          <TouchableOpacity 
+            style={[styles.viewToggleButton, !showMonthView && styles.activeViewToggleButton]} 
+            onPress={() => setShowMonthView(false)}
+          >
+            <Text style={[styles.viewToggleText, !showMonthView && styles.activeViewToggleText]}>
+              Daily View
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.viewToggleButton, showMonthView && styles.activeViewToggleButton]} 
+            onPress={() => setShowMonthView(true)}
+          >
+            <Text style={[styles.viewToggleText, showMonthView && styles.activeViewToggleText]}>
+              Monthly View
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-          style={[styles.button, isEditing ? styles.updateButton : styles.saveButton]} 
-          onPress={addExpense}
-        >
-          <Text style={styles.buttonText}>
-            {isEditing ? 'Update Expense' : 'Save Expense'}
-          </Text>
-        </TouchableOpacity>
-        
-        {isEditing && (
-          <TouchableOpacity 
-            style={styles.cancelButton} 
-            onPress={resetForm}
-          >
-            <Text style={styles.cancelButtonText}>Cancel Editing</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.viewToggleContainer}>
-        <TouchableOpacity 
-          style={[styles.viewToggleButton, !showMonthView && styles.activeViewToggleButton]} 
-          onPress={() => setShowMonthView(false)}
-        >
-          <Text style={[styles.viewToggleText, !showMonthView && styles.activeViewToggleText]}>
-            Daily View
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.viewToggleButton, showMonthView && styles.activeViewToggleButton]} 
-          onPress={() => setShowMonthView(true)}
-        >
-          <Text style={[styles.viewToggleText, showMonthView && styles.activeViewToggleText]}>
-            Monthly View
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {!showMonthView ? (
-        // Daily View
-        <>
-          <View style={styles.expenseListHeader}>
-            <Text style={styles.subTitle}>View Expenses By Date</Text>
-            
-            <View style={styles.viewDateContainer}>
-              {Platform.OS !== 'web' ? (
-                <>
-                  <TouchableOpacity 
+        {!showMonthView ? (
+          // Daily View
+          <>
+            <View style={styles.expenseListHeader}>
+              <Text style={styles.subTitle}>View Expenses By Date</Text>
+              
+              <View style={styles.viewDateContainer}>
+                {Platform.OS !== 'web' ? (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.viewDateButton}
+                      onPress={() => setShowViewDatePicker(true)}
+                    >
+                      <Ionicons name="calendar-outline" size={18} color="#6366f1" />
+                      <Text style={styles.viewDateText}>{viewDate.toLocaleDateString()}</Text>
+                    </TouchableOpacity>
+                    {showViewDatePicker && (
+                      <DateTimePicker
+                        value={viewDate}
+                        mode="date"
+                        display="default"
+                        onChange={onViewDateChange}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <TouchableOpacity
                     style={styles.viewDateButton}
-                    onPress={() => setShowViewDatePicker(true)}
+                    onPress={() => {
+                      const newDate = prompt(
+                        'Enter date to view expenses (YYYY-MM-DD):',
+                        viewDate.toISOString().split('T')[0]
+                      );
+                      if (newDate) {
+                        const parsedDate = new Date(newDate);
+                        if (!isNaN(parsedDate)) {
+                          setViewDate(parsedDate);
+                        } else {
+                          Alert.alert(
+                            'Invalid Date',
+                            'Please enter a valid date in YYYY-MM-DD format.'
+                          );
+                        }
+                      }
+                    }}
                   >
                     <Ionicons name="calendar-outline" size={18} color="#6366f1" />
                     <Text style={styles.viewDateText}>{viewDate.toLocaleDateString()}</Text>
                   </TouchableOpacity>
-                  {showViewDatePicker && (
-                    <DateTimePicker
-                      value={viewDate}
-                      mode="date"
-                      display="default"
-                      onChange={onViewDateChange}
-                    />
-                  )}
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={styles.viewDateButton}
-                  onPress={() => {
-                    const newDate = prompt(
-                      'Enter date to view expenses (YYYY-MM-DD):',
-                      viewDate.toISOString().split('T')[0]
-                    );
-                    if (newDate) {
-                      const parsedDate = new Date(newDate);
-                      if (!isNaN(parsedDate)) {
-                        setViewDate(parsedDate);
-                      } else {
-                        Alert.alert(
-                          'Invalid Date',
-                          'Please enter a valid date in YYYY-MM-DD format.'
-                        );
-                      }
-                    }
-                  }}
-                >
-                  <Ionicons name="calendar-outline" size={18} color="#6366f1" />
-                  <Text style={styles.viewDateText}>{viewDate.toLocaleDateString()}</Text>
-                </TouchableOpacity>
-              )}
+                )}
+              </View>
             </View>
-          </View>
 
-          <Text style={styles.expensesTitle}>
-            {viewDate.toDateString() === new Date().toDateString()
-              ? "Today's Expenses"
-              : `Expenses for ${viewDate.toLocaleDateString()}`}
-          </Text>
-          
-          {expenses.length === 0 ? (
-            <View style={styles.noExpensesContainer}>
-              <Ionicons name="receipt-outline" size={48} color="#d1d5db" />
-              <Text style={styles.noExpensesText}>No expenses found for this date.</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={expenses}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: '#fff',
-                  borderRadius: 16,
-                  padding: 14,
-                  marginBottom: 12,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }}>
-                  {/* Category Icon */}
-                  <View style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 16,
-                  }}>
-                    <Ionicons name={CATEGORY_ICONS[item.category]} size={24} color="#fff" />
-                  </View>
-                  {/* Info */}
-                  <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
-                    {item.note ? (
-                      <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
-                    ) : null}
-                    <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
-                  </View>
-                  {/* Actions */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#f3f4f6',
-                        borderRadius: 10,
-                        width: 38,
-                        height: 38,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderWidth: 1,
-                        borderColor: '#6366f1',
-                        shadowColor: '#6366f1',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.08,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                      onPress={() => handleUpdate(item)}
-                      accessible={true}
-                      accessibilityLabel="Edit expense"
-                    >
-                      <Ionicons name="pencil" size={20} color="#6366f1" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#fef2f2',
-                        borderRadius: 10,
-                        width: 38,
-                        height: 38,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderWidth: 1,
-                        borderColor: '#ef4444',
-                        shadowColor: '#ef4444',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.08,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                      onPress={() => deleteExpense(item.id)}
-                      accessible={true}
-                      accessibilityLabel="Delete expense"
-                    >
-                      <Ionicons name="trash" size={20} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-              scrollEnabled={false}
-              style={styles.expensesList}
-            />
-          )}
-        </>
-      ) : (
-        // Monthly View
-        <>
-          <View style={styles.monthSelectorContainer}>
-            <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.monthNavigationButton}>
-              <Ionicons name="chevron-back" size={24} color="#6366f1" />
-            </TouchableOpacity>
-            
-            <Text style={styles.currentMonth}>
-              {getMonthName(viewMonth)} {viewYear}
+            <Text style={styles.expensesTitle}>
+              {viewDate.toDateString() === new Date().toDateString()
+                ? "Today's Expenses"
+                : `Expenses for ${viewDate.toLocaleDateString()}`}
             </Text>
             
-            <TouchableOpacity onPress={() => changeMonth(1)} style={styles.monthNavigationButton}>
-              <Ionicons name="chevron-forward" size={24} color="#6366f1" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Monthly Summary Card */}
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Monthly Summary</Text>
-            <Text style={styles.summaryTotal}>Total: ₹{monthlyTotal.toFixed(2)}</Text>
-            
-            <View style={styles.divider} />
-            
-            <Text style={styles.categorySummaryTitle}>Expenses by Category</Text>
-            {Object.keys(categorySummary).length > 0 ? (
-              <View style={styles.categorySummaryContainer}>
-                {renderCategorySummary()}
+            {expenses.length === 0 ? (
+              <View style={styles.noExpensesContainer}>
+                <Ionicons name="receipt-outline" size={48} color="#d1d5db" />
+                <Text style={styles.noExpensesText}>No expenses found for this date.</Text>
               </View>
             ) : (
-              <Text style={styles.noExpensesText}>No data available</Text>
-            )}
-          </View>
-          
-          <Text style={styles.expensesTitle}>All Expenses This Month</Text>
-          {monthlyExpenses.length === 0 ? (
-            <View style={styles.noExpensesContainer}>
-              <Ionicons name="receipt-outline" size={48} color="#d1d5db" />
-              <Text style={styles.noExpensesText}>No expenses found for this month.</Text>
-            </View>
-          ) : (
-            <FlatList
-              data={monthlyExpenses}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: '#fff',
-                  borderRadius: 16,
-                  padding: 14,
-                  marginBottom: 12,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 4,
-                  elevation: 2,
-                }}>
-                  {/* Category Icon */}
+              <FlatList
+                data={expenses}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
                   <View style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 16,
+                    backgroundColor: '#fff',
+                    borderRadius: 16,
+                    padding: 14,
+                    marginBottom: 12,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    elevation: 2,
                   }}>
-                    <Ionicons name={CATEGORY_ICONS[item.category]} size={24} color="#fff" />
+                    {/* Category Icon */}
+                    <View style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 16,
+                    }}>
+                      <Ionicons name={CATEGORY_ICONS[item.category]} size={24} color="#fff" />
+                    </View>
+                    {/* Info */}
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                      {item.note ? (
+                        <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+                      ) : null}
+                      <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
+                    </View>
+                    {/* Actions */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#f3f4f6',
+                          borderRadius: 10,
+                          width: 38,
+                          height: 38,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderWidth: 1,
+                          borderColor: '#6366f1',
+                          shadowColor: '#6366f1',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.08,
+                          shadowRadius: 2,
+                          elevation: 2,
+                        }}
+                        onPress={() => handleUpdate(item)}
+                        accessible={true}
+                        accessibilityLabel="Edit expense"
+                      >
+                        <Ionicons name="pencil" size={20} color="#6366f1" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#fef2f2',
+                          borderRadius: 10,
+                          width: 38,
+                          height: 38,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderWidth: 1,
+                          borderColor: '#ef4444',
+                          shadowColor: '#ef4444',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.08,
+                          shadowRadius: 2,
+                          elevation: 2,
+                        }}
+                        onPress={() => deleteExpense(item.id)}
+                        accessible={true}
+                        accessibilityLabel="Delete expense"
+                      >
+                        <Ionicons name="trash" size={20} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  {/* Info */}
-                  <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
-                    {item.note ? (
-                      <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
-                    ) : null}
-                    <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
-                  </View>
-                  {/* Actions */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#f3f4f6',
-                        borderRadius: 10,
-                        width: 38,
-                        height: 38,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderWidth: 1,
-                        borderColor: '#6366f1',
-                        shadowColor: '#6366f1',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.08,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                      onPress={() => handleUpdate(item)}
-                      accessible={true}
-                      accessibilityLabel="Edit expense"
-                    >
-                      <Ionicons name="pencil" size={20} color="#6366f1" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={{
-                        backgroundColor: '#fef2f2',
-                        borderRadius: 10,
-                        width: 38,
-                        height: 38,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderWidth: 1,
-                        borderColor: '#ef4444',
-                        shadowColor: '#ef4444',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.08,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}
-                      onPress={() => deleteExpense(item.id)}
-                      accessible={true}
-                      accessibilityLabel="Delete expense"
-                    >
-                      <Ionicons name="trash" size={20} color="#ef4444" />
-                    </TouchableOpacity>
-                  </View>
+                )}
+                scrollEnabled={false}
+                style={styles.expensesList}
+              />
+            )}
+          </>
+        ) : (
+          // Monthly View
+          <>
+            <View style={styles.monthSelectorContainer}>
+              <TouchableOpacity onPress={() => changeMonth(-1)} style={styles.monthNavigationButton}>
+                <Ionicons name="chevron-back" size={24} color="#6366f1" />
+              </TouchableOpacity>
+              
+              <Text style={styles.currentMonth}>
+                {getMonthName(viewMonth)} {viewYear}
+              </Text>
+              
+              <TouchableOpacity onPress={() => changeMonth(1)} style={styles.monthNavigationButton}>
+                <Ionicons name="chevron-forward" size={24} color="#6366f1" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Monthly Summary Card */}
+            <View style={styles.summaryCard}>
+              <Text style={styles.summaryTitle}>Monthly Summary</Text>
+              <Text style={styles.summaryTotal}>Total: ₹{monthlyTotal.toFixed(2)}</Text>
+              
+              <View style={styles.divider} />
+              
+              <Text style={styles.categorySummaryTitle}>Expenses by Category</Text>
+              {Object.keys(categorySummary).length > 0 ? (
+                <View style={styles.categorySummaryContainer}>
+                  {renderCategorySummary()}
                 </View>
+              ) : (
+                <Text style={styles.noExpensesText}>No data available</Text>
               )}
-              scrollEnabled={false}
-              style={styles.expensesList}
-            />
-          )}
-        </>
-      )}
-    </ScrollView>
+            </View>
+            
+            <Text style={styles.expensesTitle}>All Expenses This Month</Text>
+            {monthlyExpenses.length === 0 ? (
+              <View style={styles.noExpensesContainer}>
+                <Ionicons name="receipt-outline" size={48} color="#d1d5db" />
+                <Text style={styles.noExpensesText}>No expenses found for this month.</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={monthlyExpenses}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#fff',
+                    borderRadius: 16,
+                    padding: 14,
+                    marginBottom: 12,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.05,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  }}>
+                    {/* Category Icon */}
+                    <View style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 16,
+                    }}>
+                      <Ionicons name={CATEGORY_ICONS[item.category]} size={24} color="#fff" />
+                    </View>
+                    {/* Info */}
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                      {item.note ? (
+                        <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+                      ) : null}
+                      <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
+                    </View>
+                    {/* Actions */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#f3f4f6',
+                          borderRadius: 10,
+                          width: 38,
+                          height: 38,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderWidth: 1,
+                          borderColor: '#6366f1',
+                          shadowColor: '#6366f1',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.08,
+                          shadowRadius: 2,
+                          elevation: 2,
+                        }}
+                        onPress={() => handleUpdate(item)}
+                        accessible={true}
+                        accessibilityLabel="Edit expense"
+                      >
+                        <Ionicons name="pencil" size={20} color="#6366f1" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{
+                          backgroundColor: '#fef2f2',
+                          borderRadius: 10,
+                          width: 38,
+                          height: 38,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderWidth: 1,
+                          borderColor: '#ef4444',
+                          shadowColor: '#ef4444',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.08,
+                          shadowRadius: 2,
+                          elevation: 2,
+                        }}
+                        onPress={() => deleteExpense(item.id)}
+                        accessible={true}
+                        accessibilityLabel="Delete expense"
+                      >
+                        <Ionicons name="trash" size={20} color="#ef4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+                scrollEnabled={false}
+                style={styles.expensesList}
+              />
+            )}
+          </>
+        )}
+      </ScrollView>
+    </>
   );
 };
 
