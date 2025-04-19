@@ -118,87 +118,89 @@ export default function Login() {
   );
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <SuccessModal />
-      <ErrorModal />
-      
-      <ScrollView 
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+    <>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
       >
-        <View style={styles.header}>
-          <Text style={styles.logo}>✨</Text>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
-        </View>
+        <SuccessModal />
+        <ErrorModal />
+        
+        <ScrollView 
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <Text style={styles.logo}>✨</Text>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
+          </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Email Address</Text>
-          <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'email' && styles.inputFocused,
-              error.email && { borderColor: styles.errorText.color }
-            ]}
-            placeholder="Enter your email"
-            placeholderTextColor="#9ca3af"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-            onFocus={() => setFocusedInput('email')}
-            onBlur={() => setFocusedInput(null)}
-          />
-          {error.email ? <Text style={styles.errorText}>{error.email}</Text> : null}
-        </View>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Password</Text>
-          <View style={[
-            styles.passwordContainer,
-            focusedInput === 'password' && styles.inputFocused,
-            error.password && { borderColor: styles.errorText.color }
-          ]}>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email Address</Text>
             <TextInput
-              style={styles.passwordInput}
-              placeholder="Enter your password"
+              style={[
+                styles.input,
+                focusedInput === 'email' && styles.inputFocused,
+                error.email && { borderColor: styles.errorText.color }
+              ]}
+              placeholder="Enter your email"
               placeholderTextColor="#9ca3af"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              onFocus={() => setFocusedInput('password')}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+              onFocus={() => setFocusedInput('email')}
               onBlur={() => setFocusedInput(null)}
             />
-            <TouchableOpacity 
-              style={styles.eyeButton}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Ionicons 
-                name={showPassword ? 'eye-off' : 'eye'} 
-                size={20} 
-                color="#6b7280" 
+            {error.email ? <Text style={styles.errorText}>{error.email}</Text> : null}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Password</Text>
+            <View style={[
+              styles.passwordContainer,
+              focusedInput === 'password' && styles.inputFocused,
+              error.password && { borderColor: styles.errorText.color }
+            ]}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Enter your password"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                onFocus={() => setFocusedInput('password')}
+                onBlur={() => setFocusedInput(null)}
               />
+              <TouchableOpacity 
+                style={styles.eyeButton}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons 
+                  name={showPassword ? 'eye-off' : 'eye'} 
+                  size={20} 
+                  color="#6b7280" 
+                />
+              </TouchableOpacity>
+            </View>
+            {error.password ? <Text style={styles.errorText}>{error.password}</Text> : null}
+          </View>
+
+          {error.general ? <Text style={styles.errorText}>{error.general}</Text> : null}
+
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>Sign In</Text>
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account?</Text>
+            <TouchableOpacity onPress={() => router.push('/signup')}>
+              <Text style={styles.linkText}>Create Account</Text>
             </TouchableOpacity>
           </View>
-          {error.password ? <Text style={styles.errorText}>{error.password}</Text> : null}
-        </View>
-
-        {error.general ? <Text style={styles.errorText}>{error.general}</Text> : null}
-
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>Sign In</Text>
-        </TouchableOpacity>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => router.push('/signup')}>
-            <Text style={styles.linkText}>Create Account</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </>
   );
 }

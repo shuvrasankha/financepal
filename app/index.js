@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/HomeStyles';
+import BottomNavBar from './components/BottomNavBar';
 
 export default function Home() {
   const router = useRouter();
@@ -305,51 +306,54 @@ export default function Home() {
   );
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <View style={styles.welcomeSection}>
-        <View style={styles.headerContainer}>
-          <Text style={styles.welcomeText}>
-            Hi {userName ? `${userName}!` : 'there!'} 
-          </Text>
-          <TouchableOpacity 
-            style={styles.settingsButton}
-            onPress={() => router.push('/settings')}
-          >
-            <Ionicons name="settings-outline" size={24} color="#6b7280" />
-          </TouchableOpacity>
+    <>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.welcomeSection}>
+          <View style={styles.headerContainer}>
+            <Text style={styles.welcomeText}>
+              Hi {userName ? `${userName}!` : 'there!'} 
+            </Text>
+            <TouchableOpacity 
+              style={styles.settingsButton}
+              onPress={() => router.push('/settings')}
+            >
+              <Ionicons name="settings-outline" size={24} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.yearSelectorRow}>
+            <Text style={styles.yearSelectorLabel}>Showing data for</Text>
+            <TouchableOpacity 
+              style={styles.yearSelectorButton}
+              onPress={() => setShowYearPicker(true)}
+            >
+              <Text style={styles.yearSelectorText}>{selectedYear}</Text>
+              <Ionicons name="chevron-down" size={16} color="#6366f1" />
+            </TouchableOpacity>
+          </View>
         </View>
-        <View style={styles.yearSelectorRow}>
-          <Text style={styles.yearSelectorLabel}>Showing data for</Text>
-          <TouchableOpacity 
-            style={styles.yearSelectorButton}
-            onPress={() => setShowYearPicker(true)}
-          >
-            <Text style={styles.yearSelectorText}>{selectedYear}</Text>
-            <Ionicons name="chevron-down" size={16} color="#6366f1" />
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      <StatCard label="Total Expenses" amount={totals.expenses} />
-      <StatCard label="Lent" amount={totals.lent} />
-      <StatCard label="Borrowed" amount={totals.borrowed} />
-      <StatCard label="Pending Repayments" amount={totals.pendingRepayments} />
-      <StatCard label="Investments" amount={totals.investments} />
+        <StatCard label="Total Expenses" amount={totals.expenses} />
+        <StatCard label="Lent" amount={totals.lent} />
+        <StatCard label="Borrowed" amount={totals.borrowed} />
+        <StatCard label="Pending Repayments" amount={totals.pendingRepayments} />
+        <StatCard label="Investments" amount={totals.investments} />
 
-      {/* <View style={styles.navSection}>
-        <NavButton icon="wallet" label="Add Expense" onPress={() => router.push('/expense')} />
-        <NavButton icon="swap-horizontal" label="Lend / Borrow" onPress={() => router.push('/lending')} />
-        <NavButton icon="bar-chart" label="Investments" onPress={() => router.push('/investments')} />
-        <NavButton icon="return-down-forward" label="Repayments" onPress={() => router.push('/repayments')} />
-        <NavButton icon="settings" label="Settings" onPress={() => router.push('/settings')} />
-      </View> */}
+        {/* <View style={styles.navSection}>
+          <NavButton icon="wallet" label="Add Expense" onPress={() => router.push('/expense')} />
+          <NavButton icon="swap-horizontal" label="Lend / Borrow" onPress={() => router.push('/lending')} />
+          <NavButton icon="bar-chart" label="Investments" onPress={() => router.push('/investments')} />
+          <NavButton icon="return-down-forward" label="Repayments" onPress={() => router.push('/repayments')} />
+          <NavButton icon="settings" label="Settings" onPress={() => router.push('/settings')} />
+        </View> */}
 
-      <YearSelector />
-    </ScrollView>
+        <YearSelector />
+      </ScrollView>
+      <BottomNavBar />
+    </>
   );
 }

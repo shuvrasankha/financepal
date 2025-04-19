@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { auth, db } from '../firebase';
 import { Platform } from 'react-native';
+import BottomNavBar from './components/BottomNavBar';
 
 const Expense = () => {
   const CATEGORIES = [
@@ -165,179 +166,182 @@ const Expense = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Add New Expense</Text>
+    <>
+      <ScrollView style={styles.container}>
+        <Text style={styles.title}>Add New Expense</Text>
 
-      <View style={styles.card}>
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Text style={styles.rupee}>₹</Text>
-            <Text style={styles.label}>Amount</Text>
+        <View style={styles.card}>
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Text style={styles.rupee}>₹</Text>
+              <Text style={styles.label}>Amount</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter amount in INR"
+              value={amount}
+              onChangeText={setAmount}
+              keyboardType="decimal-pad"
+              maxLength={10}
+            />
           </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter amount in INR"
-            value={amount}
-            onChangeText={setAmount}
-            keyboardType="decimal-pad"
-            maxLength={10}
-          />
+
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Ionicons name="pricetag" size={16} />
+              <Text style={styles.label}>Category</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowCategoryModal(true)}
+            >
+              <Text style={[styles.categoryText, !category && styles.placeholderText]}>
+                {category || 'Select a category'}
+              </Text>
+            </TouchableOpacity>
+
+            <Modal
+              visible={showCategoryModal}
+              transparent={true}
+              animationType="slide"
+              onRequestClose={() => setShowCategoryModal(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Select Category</Text>
+                  <ScrollView>
+                    {CATEGORIES.map((item) => (
+                      <TouchableOpacity
+                        key={item}
+                        style={[
+                          styles.categoryItem,
+                          category === item && styles.selectedCategory,
+                        ]}
+                        onPress={() => {
+                          setCategory(item);
+                          setShowCategoryModal(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.categoryItemText,
+                            category === item && styles.selectedCategoryText,
+                          ]}
+                        >
+                          {item}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setShowCategoryModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Ionicons name="calendar" size={16} />
+              <Text style={styles.label}>Date</Text>
+            </View>
+            {Platform.OS !== 'web' ? (
+              <TouchableOpacity onPress={() => setShowPicker(true)}>
+                <TextInput
+                  style={styles.input}
+                  value={date.toLocaleDateString()}
+                  editable={false}
+                />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  const newDate = prompt(
+                    'Enter date (YYYY-MM-DD):',
+                    date.toISOString().split('T')[0]
+                  );
+                  if (newDate) {
+                    const parsedDate = new Date(newDate);
+                    if (!isNaN(parsedDate)) {
+                      setDate(parsedDate);
+                      fetchExpenses();
+                    } else {
+                      Alert.alert(
+                        'Invalid Date',
+                        'Please enter a valid date in YYYY-MM-DD format.'
+                      );
+                    }
+                  }
+                }}
+              >
+                <TextInput
+                  style={styles.input}
+                  value={date.toLocaleDateString()}
+                  editable={false}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Ionicons name="create" size={16} />
+              <Text style={styles.label}>Note</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder="Optional note"
+              value={note}
+              onChangeText={setNote}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={addExpense}>
+            <Text style={styles.buttonText}>Save Expense</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Ionicons name="pricetag" size={16} />
-            <Text style={styles.label}>Category</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.input}
-            onPress={() => setShowCategoryModal(true)}
-          >
-            <Text style={[styles.categoryText, !category && styles.placeholderText]}>
-              {category || 'Select a category'}
-            </Text>
-          </TouchableOpacity>
+        <Text style={styles.title}>
+          {date.toDateString() === new Date().toDateString()
+            ? "Today's Expenses"
+            : `Expenses for ${date.toLocaleDateString()}`}
+        </Text>
+        <FlatList
+          data={expenses}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.expenseContainer}>
+              <View style={styles.expenseInfo}>
+                <Text style={styles.expenseAmount}>₹{item.amount}</Text>
+                {item.category && <Text style={styles.categoryText}>{item.category}</Text>}
+                {item.note && <Text style={styles.noteText}>{item.note}</Text>}
+              </View>
 
-          <Modal
-            visible={showCategoryModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowCategoryModal(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Select Category</Text>
-                <ScrollView>
-                  {CATEGORIES.map((item) => (
-                    <TouchableOpacity
-                      key={item}
-                      style={[
-                        styles.categoryItem,
-                        category === item && styles.selectedCategory,
-                      ]}
-                      onPress={() => {
-                        setCategory(item);
-                        setShowCategoryModal(false);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.categoryItemText,
-                          category === item && styles.selectedCategoryText,
-                        ]}
-                      >
-                        {item}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+              <View style={styles.buttonGroup}>
                 <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowCategoryModal(false)}
+                  style={styles.editBtn}
+                  onPress={() => handleUpdate(item)}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Ionicons name="pencil-outline" size={20} color="#fff" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => confirmDelete(item.id)}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
-          </Modal>
-        </View>
-
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Ionicons name="calendar" size={16} />
-            <Text style={styles.label}>Date</Text>
-          </View>
-          {Platform.OS !== 'web' ? (
-            <TouchableOpacity onPress={() => setShowPicker(true)}>
-              <TextInput
-                style={styles.input}
-                value={date.toLocaleDateString()}
-                editable={false}
-              />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              onPress={() => {
-                const newDate = prompt(
-                  'Enter date (YYYY-MM-DD):',
-                  date.toISOString().split('T')[0]
-                );
-                if (newDate) {
-                  const parsedDate = new Date(newDate);
-                  if (!isNaN(parsedDate)) {
-                    setDate(parsedDate);
-                    fetchExpenses();
-                  } else {
-                    Alert.alert(
-                      'Invalid Date',
-                      'Please enter a valid date in YYYY-MM-DD format.'
-                    );
-                  }
-                }
-              }}
-            >
-              <TextInput
-                style={styles.input}
-                value={date.toLocaleDateString()}
-                editable={false}
-              />
-            </TouchableOpacity>
           )}
-        </View>
-
-        <View style={styles.inputGroup}>
-          <View style={styles.labelContainer}>
-            <Ionicons name="create" size={16} />
-            <Text style={styles.label}>Note</Text>
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="Optional note"
-            value={note}
-            onChangeText={setNote}
-          />
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={addExpense}>
-          <Text style={styles.buttonText}>Save Expense</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.title}>
-        {date.toDateString() === new Date().toDateString()
-          ? "Today's Expenses"
-          : `Expenses for ${date.toLocaleDateString()}`}
-      </Text>
-      <FlatList
-        data={expenses}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.expenseContainer}>
-            <View style={styles.expenseInfo}>
-              <Text style={styles.expenseAmount}>₹{item.amount}</Text>
-              {item.category && <Text style={styles.categoryText}>{item.category}</Text>}
-              {item.note && <Text style={styles.noteText}>{item.note}</Text>}
-            </View>
-
-            <View style={styles.buttonGroup}>
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => handleUpdate(item)}
-              >
-                <Ionicons name="pencil-outline" size={20} color="#fff" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => confirmDelete(item.id)}
-              >
-                <Ionicons name="trash-outline" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      />
-    </ScrollView>
+        />
+      </ScrollView>
+      <BottomNavBar />
+    </>
   );
 };
 
