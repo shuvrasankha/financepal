@@ -39,7 +39,7 @@ export default function Lending() {
         });
         if (data.length > 0) {
           // Show contact picker with phone numbers
-          const contactOptions = data.slice(0, 5).flatMap(contact => {
+          const contactOptions = data.flatMap(contact => {
             if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
               return contact.phoneNumbers.map(phone => ({
                 text: `${contact.name} (${phone.number})`,
@@ -74,10 +74,33 @@ export default function Lending() {
         Alert.alert('Error', 'User not authenticated.');
         return false;
       }
+      // Fetch or initialize pending amount for this contact
+      let pendingAmount = 0;
+      // Get all previous loans for this user and contact
+      const q = query(collection(db, 'loans'), where('userId', '==', user.uid), where('contact', '==', loan.contact));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const amt = parseFloat(data.amount) || 0;
+        if (data.loanType === 'given') {
+          pendingAmount += amt;
+        } else if (data.loanType === 'taken') {
+          pendingAmount -= amt;
+        }
+      });
+      // Update pendingAmount with this new loan
+      const thisAmount = parseFloat(loan.amount) || 0;
+      if (loan.loanType === 'given') {
+        pendingAmount += thisAmount;
+      } else if (loan.loanType === 'taken') {
+        pendingAmount -= thisAmount;
+      }
       await addDoc(collection(db, 'loans'), {
         ...loan,
+        amount: thisAmount, // Store the original amount (not negative)
         userId: user.uid,
         createdAt: new Date().toISOString(),
+        pendingAmount,
       });
       return true;
     } catch (error) {
@@ -110,15 +133,21 @@ export default function Lending() {
     const fetchAndSummarizeLoans = async () => {
       setLoansLoading(true);
       const loans = await fetchLoansFromFirestore();
-      // Group and sum by contact
+      // Group by contact, keep the latest (by createdAt) pendingAmount for each contact
       const summary = {};
       loans.forEach(loan => {
         const contact = loan.contact || 'Unknown';
-        const amount = parseFloat(loan.amount) || 0;
-        if (!summary[contact]) summary[contact] = 0;
-        summary[contact] += amount;
+        const createdAt = loan.createdAt || '';
+        if (!summary[contact] || (createdAt > summary[contact].createdAt)) {
+          summary[contact] = { pendingAmount: loan.pendingAmount || 0, createdAt };
+        }
       });
-      setLoanSummary(summary);
+      // Flatten for display
+      const flatSummary = {};
+      Object.entries(summary).forEach(([contact, val]) => {
+        flatSummary[contact] = val.pendingAmount;
+      });
+      setLoanSummary(flatSummary);
       setLoansLoading(false);
     };
     fetchAndSummarizeLoans();
@@ -160,69 +189,76 @@ export default function Lending() {
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Add Loan</Text>
-
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#3B66FF', marginBottom: 12, letterSpacing: 0.5 }]}>Add Loan</Text>
+        <View style={[styles.card, { shadowColor: '#3B66FF', shadowOpacity: 0.08, shadowRadius: 12, elevation: 4, borderWidth: 0 }]}> 
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 24, gap: 12 }}>
             <TouchableOpacity
-              style={[styles.toggleButton, loanType === 'given' && styles.toggleButtonActive]}
+              style={[styles.toggleButton, loanType === 'given' && styles.toggleButtonActive, { flex: 1, borderRadius: 12, borderWidth: 0, backgroundColor: loanType === 'given' ? '#3B66FF' : '#F3F4F6', shadowColor: '#3B66FF', shadowOpacity: loanType === 'given' ? 0.12 : 0, shadowRadius: 6, elevation: loanType === 'given' ? 2 : 0 }]}
               onPress={() => setLoanType('given')}
+              activeOpacity={0.85}
             >
-              <Text style={[styles.toggleButtonText, loanType === 'given' && styles.toggleButtonTextActive]}>Money Given</Text>
+              <Ionicons name="arrow-up-circle" size={22} color={loanType === 'given' ? '#fff' : '#3B66FF'} style={{ marginBottom: 2 }} />
+              <Text style={[styles.toggleButtonText, loanType === 'given' && styles.toggleButtonTextActive, { fontWeight: '700', fontSize: 16 }]}>Money Given</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.toggleButton, loanType === 'taken' && styles.toggleButtonActive]}
+              style={[styles.toggleButton, loanType === 'taken' && styles.toggleButtonActive, { flex: 1, borderRadius: 12, borderWidth: 0, backgroundColor: loanType === 'taken' ? '#ef4444' : '#F3F4F6', shadowColor: '#ef4444', shadowOpacity: loanType === 'taken' ? 0.12 : 0, shadowRadius: 6, elevation: loanType === 'taken' ? 2 : 0 }]}
               onPress={() => setLoanType('taken')}
+              activeOpacity={0.85}
             >
-              <Text style={[styles.toggleButtonText, loanType === 'taken' && styles.toggleButtonTextActive]}>Money Taken</Text>
+              <Ionicons name="arrow-down-circle" size={22} color={loanType === 'taken' ? '#fff' : '#ef4444'} style={{ marginBottom: 2 }} />
+              <Text style={[styles.toggleButtonText, loanType === 'taken' && styles.toggleButtonTextActive, { fontWeight: '700', fontSize: 16 }]}>Money Taken</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Amount (₹)</Text>
+          <View style={[styles.inputGroup, { marginBottom: 18 }]}> 
+            <Text style={[styles.label, { fontSize: 15, color: '#3B66FF', fontWeight: '600' }]}>Amount (₹)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: '#F8FAFF', borderColor: '#3B66FF', borderWidth: 1, borderRadius: 10, fontSize: 18, fontWeight: '600', color: '#222' }]}
               placeholder="Enter amount"
               keyboardType="numeric"
               value={form.amount}
               onChangeText={(text) => handleChange('amount', text)}
+              placeholderTextColor="#b6c3e0"
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contact</Text>
-            <TouchableOpacity style={styles.contactPicker} onPress={selectContact}>
-              <Ionicons name="person-outline" size={22} color="#888" style={{ marginRight: 8 }} />
-              <Text style={form.contact ? styles.contactPickerText : [styles.contactPickerText, { color: '#bbb' }] }>
+          <View style={[styles.inputGroup, { marginBottom: 18 }]}> 
+            <Text style={[styles.label, { fontSize: 15, color: '#3B66FF', fontWeight: '600' }]}>Contact</Text>
+            <TouchableOpacity style={[styles.contactPicker, { backgroundColor: '#F8FAFF', borderColor: '#3B66FF', borderWidth: 1, borderRadius: 10 }]} onPress={selectContact} activeOpacity={0.85}>
+              <Ionicons name="person-outline" size={22} color="#3B66FF" style={{ marginRight: 8 }} />
+              <Text style={form.contact ? [styles.contactPickerText, { color: '#222', fontWeight: '500' }] : [styles.contactPickerText, { color: '#b6c3e0' }] }>
                 {form.contact ? form.contact : 'Choose a contact'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Description (Optional)</Text>
+          <View style={[styles.inputGroup, { marginBottom: 18 }]}> 
+            <Text style={[styles.label, { fontSize: 15, color: '#3B66FF', fontWeight: '600' }]}>Description (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: '#F8FAFF', borderColor: '#e5e7eb', borderWidth: 1, borderRadius: 10, fontSize: 16, color: '#444' }]}
               placeholder="Enter description"
               value={form.description}
               onChangeText={(text) => handleChange('description', text)}
+              placeholderTextColor="#b6c3e0"
             />
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 10 }}>
             <TouchableOpacity
-              style={[styles.datePicker, { flex: 1, marginRight: 8 }]}
+              style={[styles.datePicker, { flex: 1, backgroundColor: '#F8FAFF', borderColor: '#3B66FF', borderWidth: 1, borderRadius: 10, alignItems: 'center', flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 10 }]}
               onPress={() => setShowDatePicker(true)}
+              activeOpacity={0.85}
             >
-              <Ionicons name="calendar-outline" size={20} color="#888" style={{ marginRight: 6 }} />
-              <Text>{new Date(form.date).toLocaleDateString()}</Text>
+              <Ionicons name="calendar-outline" size={20} color="#3B66FF" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#222', fontWeight: '500', fontSize: 15 }}>{new Date(form.date).toLocaleDateString()}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.datePicker, { flex: 1, marginLeft: 8 }]}
+              style={[styles.datePicker, { flex: 1, backgroundColor: '#F8FAFF', borderColor: '#3B66FF', borderWidth: 1, borderRadius: 10, alignItems: 'center', flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 10 }]}
               onPress={() => setShowDueDatePicker(true)}
+              activeOpacity={0.85}
             >
-              <Ionicons name="calendar-outline" size={20} color="#888" style={{ marginRight: 6 }} />
-              <Text>Due: {new Date(form.dueDate).toLocaleDateString()}</Text>
+              <Ionicons name="calendar-outline" size={20} color="#3B66FF" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#222', fontWeight: '500', fontSize: 15 }}>Due: {new Date(form.dueDate).toLocaleDateString()}</Text>
             </TouchableOpacity>
           </View>
           {showDatePicker && (
@@ -252,29 +288,39 @@ export default function Lending() {
             />
           )}
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSubmit}>
-            <Text style={styles.saveButtonText}>Save Loan</Text>
+          <TouchableOpacity style={[styles.saveButton, { backgroundColor: '#3B66FF', borderRadius: 14, marginTop: 8, shadowColor: '#3B66FF', shadowOpacity: 0.15, shadowRadius: 8, elevation: 2 }]} onPress={handleSubmit} activeOpacity={0.85}>
+            <Text style={[styles.saveButtonText, { fontSize: 17, fontWeight: '700', letterSpacing: 0.2 }]}>Save Loan</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-       {/* Loan summary section */}
-      <View style={styles.card}>
-        <Text style={[styles.title, { fontSize: 20, marginBottom: 12 }]}>Loan Summary by Contact</Text>
-        {loansLoading ? (
-          <Text>Loading...</Text>
-        ) : Object.keys(loanSummary).length === 0 ? (
-          <Text style={{ color: '#888' }}>No loans found.</Text>
-        ) : (
-          Object.entries(loanSummary).map(([contact, total], idx) => (
-            <View key={contact + idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ color: '#222', fontWeight: '500' }}>{contact}</Text>
-              <Text style={{ color: '#3B66FF', fontWeight: '600' }}>₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+        {/* Loan summary section - moved inside ScrollView so it scrolls with content */}
+        <View style={[styles.card, { marginTop: 24, padding: 0, overflow: 'hidden', borderRadius: 18, shadowColor: '#3B66FF', shadowOpacity: 0.10, shadowRadius: 12, elevation: 3 }]}> 
+          <View style={{ backgroundColor: '#3B66FF', paddingVertical: 18, paddingHorizontal: 20, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: 'bold', letterSpacing: 0.5 }}>Loan Summary by Contact</Text>
+          </View>
+          {loansLoading ? (
+            <View style={{ padding: 24, alignItems: 'center' }}><Text style={{ color: '#3B66FF', fontWeight: '600' }}>Loading...</Text></View>
+          ) : Object.keys(loanSummary).length === 0 ? (
+            <View style={{ padding: 24, alignItems: 'center' }}><Text style={{ color: '#888' }}>No loans found.</Text></View>
+          ) : (
+            <View style={{ paddingHorizontal: 0, paddingBottom: 8 }}>
+              {/* Table Header */}
+              <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', paddingVertical: 14, paddingHorizontal: 18, borderTopWidth: 0, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+                <Text style={{ flex: 2, fontWeight: '700', color: '#3B66FF', fontSize: 16, letterSpacing: 0.2 }}>Contact</Text>
+                <Text style={{ flex: 1, fontWeight: '700', color: '#3B66FF', fontSize: 16, textAlign: 'right', letterSpacing: 0.2 }}>Pending</Text>
+              </View>
+              {/* Table Rows */}
+              {Object.entries(loanSummary).map(([contact, pending], idx) => (
+                <View key={contact + idx} style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: idx % 2 === 0 ? '#fff' : '#f8faff', paddingVertical: 16, paddingHorizontal: 18 }}>
+                  <Ionicons name="person-circle" size={28} color="#3B66FF" style={{ marginRight: 10 }} />
+                  <Text style={{ flex: 2, color: '#222', fontWeight: '600', fontSize: 15 }}>{contact}</Text>
+                  <Text style={{ flex: 1, color: pending === 0 ? '#888' : (pending > 0 ? '#10b981' : '#ef4444'), fontWeight: '700', fontSize: 16, textAlign: 'right' }}>₹{pending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                </View>
+              ))}
             </View>
-          ))
-        )}
-      </View>
+          )}
+        </View>
+      </ScrollView>
       <BottomNavBar />
-     
     </>
   );
 }
