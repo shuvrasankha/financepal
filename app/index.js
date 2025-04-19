@@ -257,7 +257,35 @@ export default function Home() {
   const StatCard = ({ label, amount }) => {
     const cardDetails = getCardDetails(label);
     const router = useRouter();
-  
+
+    // Make the entire Investments card clickable and route to /investment dashboard
+    if (label === "Investments") {
+      return (
+        <TouchableOpacity onPress={() => router.push('/investment')} activeOpacity={0.85} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardTitleSection}>
+              <View style={[styles.cardIcon, { backgroundColor: cardDetails.color + '15' }]}> 
+                <Ionicons name={cardDetails.icon} size={24} color={cardDetails.color} />
+              </View>
+              <View>
+                <Text style={styles.cardLabel}>{label}</Text>
+                <Text style={styles.cardDescription}>{cardDetails.description}</Text>
+              </View>
+            </View>
+          </View>
+          <Text style={[styles.cardAmount, amount < 0 && styles.negative]}>
+            {formatINR(amount)}
+          </Text>
+          <View style={styles.cardActions}>
+            <View style={styles.addButton}>
+              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
+              <Text style={styles.addButtonText}>Add Investment</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
@@ -308,18 +336,6 @@ export default function Home() {
             >
               <Ionicons name="add-circle-outline" size={20} color="#ef4444" />
               <Text style={styles.addButtonText}>Add Borrowing</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {label === "Investments" && (
-          <View style={styles.cardActions}>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => router.push('/investment')}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
-              <Text style={styles.addButtonText}>Add Investment</Text>
             </TouchableOpacity>
           </View>
         )}
