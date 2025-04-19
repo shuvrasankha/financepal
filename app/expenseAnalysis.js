@@ -233,9 +233,9 @@ const ExpenseAnalysis = () => {
                 <Text style={[styles.monthlyChangePercent, { color: monthlyChange > 0 ? '#ef4444' : monthlyChange < 0 ? '#22c55e' : '#22223b' }]}> {Math.abs(monthlyChange).toFixed(1)}%</Text>
               </Text>
               {monthlyChange > 0 ? (
-                <Text style={styles.arrowUp}>▲</Text>
+                <Text style={[styles.arrowUp, { color: '#ef4444' }]}>▲</Text>
               ) : monthlyChange < 0 ? (
-                <Text style={styles.arrowDown}>▼</Text>
+                <Text style={[styles.arrowDown, { color: '#22c55e' }]}>▼</Text>
               ) : null}
             </View>
           </View>
