@@ -45,6 +45,12 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen
+        name="expenseAnalysis"
+        options={{
+          title: 'Expense Analysis',
+        }}
+      />
+      <Stack.Screen
         name="login"
         options={{
           title: 'Login',
