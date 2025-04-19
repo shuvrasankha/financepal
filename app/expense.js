@@ -53,6 +53,7 @@ const Expense = () => {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showMonthView, setShowMonthView] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
   
   // Expense data state
   const [amount, setAmount] = useState('');
@@ -382,10 +383,11 @@ const Expense = () => {
   };
 
   const renderCategorySummary = () => {
-    return Object.entries(categorySummary).map(([category, amount], index) => (
-      <View key={index} style={styles.categorySummaryItem}>
-        <Text style={styles.categorySummaryName}>{category}</Text>
-        <Text style={styles.categorySummaryAmount}>₹{amount.toFixed(2)}</Text>
+    return Object.entries(categorySummary).map(([category, amount], idx) => (
+      <View key={category + idx} style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: idx % 2 === 0 ? '#fff' : '#f8faff', paddingVertical: 16, paddingHorizontal: 18 }}>
+        <Ionicons name={CATEGORY_ICONS[category] || 'pricetag'} size={24} color={CATEGORY_COLORS[category] || '#6366f1'} style={{ marginRight: 10 }} />
+        <Text style={{ flex: 2, color: '#222', fontWeight: '600', fontSize: 15 }}>{category}</Text>
+        <Text style={{ flex: 1, color: '#6366f1', fontWeight: '700', fontSize: 16, textAlign: 'right' }}>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
       </View>
     ));
   };
@@ -435,163 +437,40 @@ const Expense = () => {
   return (
     <>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
-        {/* Removed top navigation/header, only form title remains */}
-        <View style={styles.header}>
-          <Text style={styles.title}>{isEditing ? 'Edit Expense' : 'Add New Expense'}</Text>
+        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5 }]}>Expenses</Text>
+        {/* Total Expenses Card */}
+        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
+          <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 6 }}>Total Expenses This Month</Text>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#6366f1' }}>₹{monthlyTotal.toLocaleString('en-IN')}</Text>
         </View>
-
-        <View style={styles.card}>
-          <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Amount</Text>
+        {/* Monthly Summary Card */}
+        <View style={[styles.card, { marginBottom: 24, padding: 0, overflow: 'hidden', borderRadius: 18, shadowColor: '#6366f1', shadowOpacity: 0.10, shadowRadius: 12, elevation: 3 }]}> 
+          <View style={{ backgroundColor: '#fff', paddingVertical: 18, paddingHorizontal: 20, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
+            <Text style={{ color: '#111', fontSize: 22, fontWeight: 'bold', letterSpacing: 0.5 }}>Expense Summary ({viewDate.toLocaleDateString()})</Text>
+          </View>
+          <View style={{ paddingHorizontal: 0, paddingBottom: 8 }}>
+            {/* Table Header */}
+            <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', paddingVertical: 14, paddingHorizontal: 18, borderTopWidth: 0, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+              <Text style={{ flex: 2, fontWeight: '700', color: '#6366f1', fontSize: 16, letterSpacing: 0.2 }}>Category</Text>
+              <Text style={{ flex: 1, fontWeight: '700', color: '#6366f1', fontSize: 16, textAlign: 'right', letterSpacing: 0.2 }}>Amount</Text>
             </View>
-            <TextInput
-              style={[styles.input, inputHighlight.amount && { borderColor: '#ef4444', borderWidth: 2 }]}
-              placeholder="Enter amount in ₹"
-              value={amount}
-              onChangeText={(text) => {
-                // Allow only numbers and a single decimal point
-                const numericValue = text.replace(/[^0-9.]/g, '');
-                if (/^\d*\.?\d*$/.test(numericValue)) {
-                  setAmount(numericValue);
+            {/* Table Rows */}
+            {Object.entries(
+              expenses.reduce((acc, exp) => {
+                if (exp.date === viewDate.toISOString().split('T')[0]) {
+                  acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
                 }
-                if (inputHighlight.amount) setInputHighlight((prev) => ({ ...prev, amount: false }));
-              }}
-              keyboardType="numeric" // Ensures numeric keyboard is displayed
-              maxLength={10}
-              placeholderTextColor="#9ca3af"
-            />
+                return acc;
+              }, {})
+            ).map(([category, amount], idx) => (
+              <View key={category + idx} style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: idx % 2 === 0 ? '#fff' : '#f8faff', paddingVertical: 16, paddingHorizontal: 18 }}>
+                <Ionicons name={CATEGORY_ICONS[category] || 'pricetag'} size={24} color={CATEGORY_COLORS[category] || '#6366f1'} style={{ marginRight: 10 }} />
+                <Text style={{ flex: 2, color: '#222', fontWeight: '600', fontSize: 15 }}>{category}</Text>
+                <Text style={{ flex: 1, color: '#6366f1', fontWeight: '700', fontSize: 16, textAlign: 'right' }}>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+              </View>
+            ))}
           </View>
-
-          <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Category</Text>
-            </View>
-            {/* Category grid selection UI */}
-            <View style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              marginTop: 8,
-              marginBottom: 4,
-            }}>
-              {CATEGORIES.map((item, idx) => (
-                <TouchableOpacity
-                  key={item}
-                  style={{
-                    width: '23%', // 4 columns with space
-                    aspectRatio: 1,
-                    marginBottom: 12,
-                    borderRadius: 16,
-                    backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
-                    borderWidth: category === item ? 2 : 1,
-                    borderColor: inputHighlight.category && !category ? '#ef4444' : (category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb'),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 8,
-                  }}
-                  onPress={() => {
-                    setCategory(item);
-                    if (inputHighlight.category) setInputHighlight((prev) => ({ ...prev, category: false }));
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={CATEGORY_ICONS[item]}
-                    size={28}
-                    color={category === item ? '#fff' : (CATEGORY_COLORS[item] || '#6366f1')}
-                    style={{ marginBottom: 6 }}
-                  />
-                  <Text style={{
-                    color: category === item ? '#fff' : '#374151',
-                    fontWeight: category === item ? 'bold' : '500',
-                    fontSize: 13,
-                    textAlign: 'center',
-                  }}>{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Expense Date</Text>
-            </View>
-            {Platform.OS !== 'web' ? (
-              <>
-                <TouchableOpacity 
-                  style={styles.input}
-                  onPress={() => setShowExpenseDatePicker(true)}
-                >
-                  <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
-                </TouchableOpacity>
-                {showExpenseDatePicker && (
-                  <DateTimePicker
-                    value={expenseDate}
-                    mode="date"
-                    display="default"
-                    onChange={onExpenseDateChange}
-                  />
-                )}
-              </>
-            ) : (
-              <TouchableOpacity
-                style={styles.input}
-                onPress={() => {
-                  const newDate = prompt(
-                    'Enter expense date (YYYY-MM-DD):',
-                    expenseDate.toISOString().split('T')[0]
-                  );
-                  if (newDate) {
-                    const parsedDate = new Date(newDate);
-                    if (!isNaN(parsedDate)) {
-                      setExpenseDate(parsedDate);
-                    } else {
-                      Alert.alert(
-                        'Invalid Date',
-                        'Please enter a valid date in YYYY-MM-DD format.'
-                      );
-                    }
-                  }
-                }}
-              >
-                <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <View style={styles.labelContainer}>
-              <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Note</Text>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Optional note"
-              value={note}
-              onChangeText={setNote}
-              placeholderTextColor="#9ca3af"
-            />
-          </View>
-
-          <TouchableOpacity 
-            style={[styles.button, isEditing ? styles.updateButton : styles.saveButton]} 
-            onPress={addExpense}
-          >
-            <Text style={styles.buttonText}>
-              {isEditing ? 'Update Expense' : 'Save Expense'}
-            </Text>
-          </TouchableOpacity>
-          
-          {isEditing && (
-            <TouchableOpacity 
-              style={styles.cancelButton} 
-              onPress={resetForm}
-            >
-              <Text style={styles.cancelButtonText}>Cancel Editing</Text>
-            </TouchableOpacity>
-          )}
         </View>
-
         <View style={styles.viewToggleContainer}>
           <TouchableOpacity 
             style={[styles.viewToggleButton, !showMonthView && styles.activeViewToggleButton]} 
@@ -685,33 +564,36 @@ const Expense = () => {
                     alignItems: 'center',
                     backgroundColor: '#fff',
                     borderRadius: 16,
-                    padding: 14,
-                    marginBottom: 12,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 4,
+                    padding: 16,
+                    marginBottom: 14,
+                    shadowColor: '#6366f1',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 8,
                     elevation: 2,
                   }}>
                     {/* Category Icon */}
                     <View style={{
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       borderRadius: 12,
                       backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      marginRight: 16,
+                      marginRight: 14,
                     }}>
-                      <Ionicons name={CATEGORY_ICONS[item.category]} size={24} color="#fff" />
+                      <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
                     </View>
-                    {/* Info */}
+                    {/* Main Info */}
                     <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                        <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '600', backgroundColor: '#f3f4f6', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 8 }}>{item.category}</Text>
+                      </View>
                       {item.note ? (
-                        <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+                        <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
                       ) : null}
-                      <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
+                      <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{new Date(item.date).toLocaleDateString()}</Text>
                     </View>
                     {/* Actions */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
@@ -719,8 +601,8 @@ const Expense = () => {
                         style={{
                           backgroundColor: '#f3f4f6',
                           borderRadius: 10,
-                          width: 38,
-                          height: 38,
+                          width: 36,
+                          height: 36,
                           justifyContent: 'center',
                           alignItems: 'center',
                           borderWidth: 1,
@@ -735,14 +617,14 @@ const Expense = () => {
                         accessible={true}
                         accessibilityLabel="Edit expense"
                       >
-                        <Ionicons name="pencil" size={20} color="#6366f1" />
+                        <Ionicons name="pencil" size={18} color="#6366f1" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={{
                           backgroundColor: '#fef2f2',
                           borderRadius: 10,
-                          width: 38,
-                          height: 38,
+                          width: 36,
+                          height: 36,
                           justifyContent: 'center',
                           alignItems: 'center',
                           borderWidth: 1,
@@ -757,7 +639,7 @@ const Expense = () => {
                         accessible={true}
                         accessibilityLabel="Delete expense"
                       >
-                        <Ionicons name="trash" size={20} color="#ef4444" />
+                        <Ionicons name="trash" size={18} color="#ef4444" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -817,33 +699,36 @@ const Expense = () => {
                     alignItems: 'center',
                     backgroundColor: '#fff',
                     borderRadius: 16,
-                    padding: 14,
-                    marginBottom: 12,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.05,
-                    shadowRadius: 4,
+                    padding: 16,
+                    marginBottom: 14,
+                    shadowColor: '#6366f1',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 8,
                     elevation: 2,
                   }}>
                     {/* Category Icon */}
                     <View style={{
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       borderRadius: 12,
                       backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      marginRight: 16,
+                      marginRight: 14,
                     }}>
-                      <Ionicons name={CATEGORY_ICONS[item.category]} size={24} color="#fff" />
+                      <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
                     </View>
-                    {/* Info */}
+                    {/* Main Info */}
                     <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                        <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '600', backgroundColor: '#f3f4f6', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 8 }}>{item.category}</Text>
+                      </View>
                       {item.note ? (
-                        <Text style={{ fontSize: 14, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+                        <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
                       ) : null}
-                      <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{item.category} • {new Date(item.date).toLocaleDateString()}</Text>
+                      <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{new Date(item.date).toLocaleDateString()}</Text>
                     </View>
                     {/* Actions */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
@@ -851,8 +736,8 @@ const Expense = () => {
                         style={{
                           backgroundColor: '#f3f4f6',
                           borderRadius: 10,
-                          width: 38,
-                          height: 38,
+                          width: 36,
+                          height: 36,
                           justifyContent: 'center',
                           alignItems: 'center',
                           borderWidth: 1,
@@ -867,14 +752,14 @@ const Expense = () => {
                         accessible={true}
                         accessibilityLabel="Edit expense"
                       >
-                        <Ionicons name="pencil" size={20} color="#6366f1" />
+                        <Ionicons name="pencil" size={18} color="#6366f1" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={{
                           backgroundColor: '#fef2f2',
                           borderRadius: 10,
-                          width: 38,
-                          height: 38,
+                          width: 36,
+                          height: 36,
                           justifyContent: 'center',
                           alignItems: 'center',
                           borderWidth: 1,
@@ -889,7 +774,7 @@ const Expense = () => {
                         accessible={true}
                         accessibilityLabel="Delete expense"
                       >
-                        <Ionicons name="trash" size={20} color="#ef4444" />
+                        <Ionicons name="trash" size={18} color="#ef4444" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -901,6 +786,186 @@ const Expense = () => {
           </>
         )}
       </ScrollView>
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={{
+          position: 'absolute',
+          right: 24,
+          bottom: 80,
+          backgroundColor: '#6366f1',
+          width: 60,
+          height: 60,
+          borderRadius: 30,
+          justifyContent: 'center',
+          alignItems: 'center',
+          shadowColor: '#6366f1',
+          shadowOpacity: 0.18,
+          shadowRadius: 8,
+          elevation: 6,
+        }}
+        onPress={() => setShowAddModal(true)}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="add" size={32} color="#fff" />
+      </TouchableOpacity>
+      {/* Add Expense Modal */}
+      <Modal visible={showAddModal} animationType="slide" onRequestClose={() => setShowAddModal(false)}>
+        <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
+          <View style={styles.card}>
+            <View style={styles.inputGroup}>
+              <View style={styles.labelContainer}>
+                <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Amount</Text>
+              </View>
+              <TextInput
+                style={[styles.input, inputHighlight.amount && { borderColor: '#ef4444', borderWidth: 2 }]}
+                placeholder="Enter amount in ₹"
+                value={amount}
+                onChangeText={(text) => {
+                  // Allow only numbers and a single decimal point
+                  const numericValue = text.replace(/[^0-9.]/g, '');
+                  if (/^\d*\.?\d*$/.test(numericValue)) {
+                    setAmount(numericValue);
+                  }
+                  if (inputHighlight.amount) setInputHighlight((prev) => ({ ...prev, amount: false }));
+                }}
+                keyboardType="numeric" // Ensures numeric keyboard is displayed
+                maxLength={10}
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelContainer}>
+                <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Category</Text>
+              </View>
+              {/* Category grid selection UI */}
+              <View style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                marginTop: 8,
+                marginBottom: 4,
+              }}>
+                {CATEGORIES.map((item, idx) => (
+                  <TouchableOpacity
+                    key={item}
+                    style={{
+                      width: '23%', // 4 columns with space
+                      aspectRatio: 1,
+                      marginBottom: 12,
+                      borderRadius: 16,
+                      backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
+                      borderWidth: category === item ? 2 : 1,
+                      borderColor: inputHighlight.category && !category ? '#ef4444' : (category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb'),
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 8,
+                    }}
+                    onPress={() => {
+                      setCategory(item);
+                      if (inputHighlight.category) setInputHighlight((prev) => ({ ...prev, category: false }));
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={CATEGORY_ICONS[item]}
+                      size={28}
+                      color={category === item ? '#fff' : (CATEGORY_COLORS[item] || '#6366f1')}
+                      style={{ marginBottom: 0 }}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelContainer}>
+                <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Expense Date</Text>
+              </View>
+              {Platform.OS !== 'web' ? (
+                <>
+                  <TouchableOpacity 
+                    style={styles.input}
+                    onPress={() => setShowExpenseDatePicker(true)}
+                  >
+                    <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
+                  </TouchableOpacity>
+                  {showExpenseDatePicker && (
+                    <DateTimePicker
+                      value={expenseDate}
+                      mode="date"
+                      display="default"
+                      onChange={onExpenseDateChange}
+                    />
+                  )}
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => {
+                    const newDate = prompt(
+                      'Enter expense date (YYYY-MM-DD):',
+                      expenseDate.toISOString().split('T')[0]
+                    );
+                    if (newDate) {
+                      const parsedDate = new Date(newDate);
+                      if (!isNaN(parsedDate)) {
+                        setExpenseDate(parsedDate);
+                      } else {
+                        Alert.alert(
+                          'Invalid Date',
+                          'Please enter a valid date in YYYY-MM-DD format.'
+                        );
+                      }
+                    }
+                  }}
+                >
+                  <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelContainer}>
+                <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Note</Text>
+              </View>
+              <TextInput
+                style={styles.input}
+                placeholder="Optional note"
+                value={note}
+                onChangeText={setNote}
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+              <TouchableOpacity 
+                style={{ flex: 1, backgroundColor: '#6366f1', padding: 16, borderRadius: 8, alignItems: 'center', marginRight: 10, flexDirection: 'row', justifyContent: 'center' }} 
+                onPress={addExpense}
+              >
+                <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>{isEditing ? 'Update' : 'Save'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={{ flex: 1, backgroundColor: '#fee2e2', padding: 16, borderRadius: 8, alignItems: 'center', marginLeft: 10, flexDirection: 'row', justifyContent: 'center' }} 
+                onPress={() => setShowAddModal(false)}
+              >
+                <Ionicons name="close-circle-outline" size={22} color="#ef4444" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#ef4444', fontWeight: 'bold', fontSize: 18 }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {isEditing && (
+              <TouchableOpacity 
+                style={styles.cancelButton} 
+                onPress={resetForm}
+              >
+                <Text style={styles.cancelButtonText}>Cancel Editing</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
       <BottomNavBar />
     </>
   );

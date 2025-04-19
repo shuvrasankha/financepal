@@ -127,7 +127,7 @@ const ExpenseAnalysis = () => {
   return (
     <>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Expense Analysis</Text>
+        <Text style={[styles.title, { textAlign: 'left', marginLeft: 4 }]}>Expense Analysis</Text>
         <View style={styles.toggleContainer}>
           <TouchableOpacity
             style={[styles.toggleButton, viewMode === 'monthly' && styles.toggleButtonActive]}
