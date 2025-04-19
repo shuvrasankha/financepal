@@ -5,6 +5,8 @@ import BottomNavBar from './components/BottomNavBar';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
+import { db, auth } from '../firebase';
+import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 
 const ASSET_TYPES = [
   { type: 'Stocks', color: '#6366f1', icon: 'trending-up-outline', value: 120000 },
@@ -26,7 +28,7 @@ const INVESTMENT_TYPES = [
 ];
 
 // AddInvestmentForm component for modal
-function AddInvestmentForm({ onClose }) {
+function AddInvestmentForm({ onClose, onAdded }) {
   const [form, setForm] = useState({
     amount: '',
     investmentType: '',
@@ -40,14 +42,30 @@ function AddInvestmentForm({ onClose }) {
 
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.amount || !form.investmentType) {
       alert('Amount and Investment Type are required.');
       return;
     }
-    // Here you would save the investment (API or state update)
-    alert('Investment added!');
-    onClose();
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      await addDoc(collection(db, 'investments'), {
+        userId: user.uid,
+        amount: Number(form.amount),
+        investmentType: form.investmentType,
+        dateInvested: form.dateInvested,
+        note: form.note,
+        stockName: form.stockName,
+        mfName: form.mfName,
+        createdAt: new Date().toISOString(),
+      });
+      alert('Investment added!');
+      onClose();
+      if (onAdded) onAdded();
+    } catch (e) {
+      alert('Failed to add investment: ' + e.message);
+    }
   };
 
   return (
@@ -165,30 +183,53 @@ function AddInvestmentForm({ onClose }) {
 export default function Investment() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedAssetIdx, setSelectedAssetIdx] = useState(0);
+  const [investments, setInvestments] = useState([]);
 
-  // Calculate total portfolio value
-  const totalValue = ASSET_TYPES.reduce((sum, asset) => sum + asset.value, 0);
+  const fetchInvestments = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const q = query(collection(db, 'investments'), where('userId', '==', user.uid));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => doc.data());
+      setInvestments(data);
+    } catch (e) {
+      setInvestments([]);
+    }
+  };
 
-  // Example yearly data (replace with real data as needed)
-  const yearlyLabels = [
-    '2019', '2020', '2021', '2022', '2023', '2024', '2025'
-  ];
-  const yearlyData = [
-    20000, 40000, 70000, 120000, 180000, 250000, 290000
-  ];
+  React.useEffect(() => {
+    fetchInvestments();
+  }, []);
 
-  // Example asset-specific yearly data (replace with real data as needed)
-  const assetYearLabels = [
-    '2019', '2020', '2021', '2022', '2023', '2024', '2025'
-  ];
-  const assetYearData = [
-    [5000, 10000, 20000, 40000, 60000, 80000, 100000], // Stocks
-    [3000, 6000, 12000, 24000, 36000, 48000, 60000], // Mutual Funds
-    [1000, 2000, 4000, 8000, 12000, 16000, 20000], // Gold
-    [2000, 4000, 8000, 16000, 24000, 32000, 40000], // Fixed Deposit
-    [500, 1000, 2000, 4000, 6000, 8000, 10000], // Others
-    [1000, 2000, 4000, 8000, 12000, 16000, 20000], // Crypto
-  ];
+  // Calculate total portfolio value from fetched investments
+  const totalValue = investments.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+
+  // Calculate asset allocation from fetched investments
+  const assetAllocMap = {};
+  investments.forEach(inv => {
+    const type = inv.investmentType;
+    if (!assetAllocMap[type]) assetAllocMap[type] = 0;
+    assetAllocMap[type] += Number(inv.amount) || 0;
+  });
+  // Build asset allocation array for display (preserve color/icon order)
+  const assetAlloc = ASSET_TYPES.map(asset => ({
+    ...asset,
+    value: assetAllocMap[asset.type] || 0
+  }));
+
+  // Pie chart and asset trend data from fetched investments
+  // Pie chart: assetAlloc
+  // Asset trend: build yearly data for each asset type
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({length: 7}, (_, i) => (currentYear - 6 + i).toString());
+  // For each asset type, build an array of yearly totals
+  const assetYearData = assetAlloc.map(asset => {
+    return years.map(year => {
+      return investments.filter(inv => inv.investmentType === asset.type && inv.dateInvested?.startsWith(year))
+        .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+    });
+  });
 
   return (
     <>
@@ -203,10 +244,12 @@ export default function Investment() {
         <Text style={styles.sectionTitle}>Yearly Portfolio Growth</Text>
         <LineChart
           data={{
-            labels: yearlyLabels,
+            labels: years,
             datasets: [
               {
-                data: yearlyData,
+                data: years.map(year =>
+                  investments.filter(inv => inv.dateInvested?.startsWith(year)).reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
+                ),
                 color: () => '#6366f1',
                 strokeWidth: 2,
               },
@@ -236,7 +279,7 @@ export default function Investment() {
         {/* Asset Allocation Cards */}
         <Text style={styles.sectionTitle}>Asset Allocation</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-          {ASSET_TYPES.map((asset, idx) => (
+          {assetAlloc.map((asset, idx) => (
             <View key={asset.type} style={{ width: '48%', marginBottom: 14 }}>
               <View style={styles.assetCard}>
                 <View style={[styles.assetIcon, { backgroundColor: asset.color + '22' }]}> 
@@ -253,7 +296,7 @@ export default function Investment() {
         {/* Pie Chart for Asset Allocation */}
         <Text style={styles.sectionTitle}>Asset Allocation Breakdown</Text>
         <PieChart
-          data={ASSET_TYPES.map(asset => ({
+          data={assetAlloc.map(asset => ({
             name:
               asset.type === 'Mutual Funds' ? 'MF'
               : asset.type === 'Fixed Deposit' ? 'FD'
@@ -275,11 +318,25 @@ export default function Investment() {
           absolute
           hasLegend={true}
           avoidFalseZero
+          showValuesOnAbsolute={false}
+          center={[0, 0]}
+          // Show percentage values
+          chartConfig={{
+            ...{
+              color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+              propsForLabels: { numberOfLines: 2, fontSize: 13 },
+            },
+            propsForBackgroundLines: {},
+            propsForDots: {},
+            propsForLabels: { fontSize: 13 },
+            decimalPlaces: 0,
+            percentage: true,
+          }}
         />
         {/* Toggleable Line Graph for Each Asset Type */}
         <Text style={styles.sectionTitle}>Asset Type Trend</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
-          {ASSET_TYPES.map((asset, idx) => (
+          {assetAlloc.map((asset, idx) => (
             <TouchableOpacity
               key={asset.type}
               style={{
@@ -301,11 +358,11 @@ export default function Investment() {
         </View>
         <LineChart
           data={{
-            labels: assetYearLabels,
+            labels: years,
             datasets: [
               {
                 data: assetYearData[selectedAssetIdx],
-                color: () => ASSET_TYPES[selectedAssetIdx].color,
+                color: () => assetAlloc[selectedAssetIdx]?.color || '#6366f1',
                 strokeWidth: 2,
               },
             ],
@@ -318,13 +375,13 @@ export default function Investment() {
             backgroundGradientFrom: '#f9f9f9',
             backgroundGradientTo: '#f9f9f9',
             decimalPlaces: 0,
-            color: (opacity = 1) => ASSET_TYPES[selectedAssetIdx].color + Math.floor(opacity * 255).toString(16),
+            color: (opacity = 1) => (assetAlloc[selectedAssetIdx]?.color || '#6366f1') + Math.floor(opacity * 255).toString(16),
             labelColor: (opacity = 1) => `rgba(31, 41, 55, ${opacity})`,
             style: { borderRadius: 16 },
             propsForDots: {
               r: '5',
               strokeWidth: '2',
-              stroke: ASSET_TYPES[selectedAssetIdx].color,
+              stroke: assetAlloc[selectedAssetIdx]?.color || '#6366f1',
             },
           }}
           bezier
@@ -337,7 +394,7 @@ export default function Investment() {
       </TouchableOpacity>
       {/* Add Investment Modal */}
       <Modal visible={showAddModal} animationType="slide" onRequestClose={() => setShowAddModal(false)}>
-        <AddInvestmentForm onClose={() => setShowAddModal(false)} />
+        <AddInvestmentForm onClose={() => setShowAddModal(false)} onAdded={fetchInvestments} />
       </Modal>
       <BottomNavBar />
     </>
@@ -409,7 +466,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   assetValue: {
-    fontSize: 18,
+    fontSize: 12, // Decreased from 18
     fontWeight: 'bold',
     color: '#6366f1',
     marginTop: 2,
