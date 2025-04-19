@@ -11,9 +11,8 @@ import {
   Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
 import { signupStyles, colors } from '../styles/SignupStyles';
+import { supabase } from '../supabase'; // Use Supabase client
 
 export default function Signup() {
   const router = useRouter();
@@ -108,54 +107,42 @@ export default function Signup() {
   };
 
   const handleSignup = async () => {
-    if (!validateForm()) {
-      return;
-    }
-  
+    if (!validateForm()) return;
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Here you would typically store the additional user data (first name, last name)
-      // to Firestore or another database
-      // Example: await setDoc(doc(db, "users", userCredential.user.uid), { firstName, lastName });
-      
-      // Show success message first
+      // 1. Sign up user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { first_name: firstName, last_name: lastName }
+        }
+      });
+
+      if (error) throw error;
+
+      // 2. Insert user profile into 'user_profiles' table
+      const user = data.user;
+      const { error: insertError } = await supabase
+        .from('user_profiles')
+        .insert([
+          {
+            id: user.id, // Supabase user id
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            created_at: new Date().toISOString()
+          }
+        ]);
+      if (insertError) throw insertError;
+
       Alert.alert(
         "Success",
-        "Account created successfully!",
-        [{ 
-          text: "Continue", 
-          onPress: () => {
-            // Try different navigation approaches
-            try {
-              // Option 1: Use replace - make sure we're not building a stack
-              router.replace('/');
-            } catch (navError) {
-              try {
-                // Option 2: Use push as fallback
-                router.push('/');
-              } catch (pushError) {
-                try {
-                  // Option 3: Use navigate if available (some router implementations)
-                  router.navigate('/');
-                } catch (navError2) {
-                  console.error("Navigation failed:", navError2);
-                  // Last resort - if nothing works, at least clear the form
-                  setFirstName('');
-                  setLastName('');
-                  setEmail('');
-                  setPassword('');
-                  setConfirmPassword('');
-                }
-              }
-            }
-          }
-        }]
+        "Account created successfully! Please check your email to verify your account.",
+        [{ text: "Continue", onPress: () => router.replace('/') }]
       );
     } catch (error) {
-      // Error handling code remains the same
-      // ...
+      Alert.alert("Signup Failed", error.message || "An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
