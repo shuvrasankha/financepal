@@ -22,6 +22,8 @@ export default function Home() {
     investments: 0   // Keep these for structure, but won't fetch
   });
 
+  const [pendingLent, setPendingLent] = useState(0);
+
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showYearPicker, setShowYearPicker] = useState(false);
 
@@ -78,6 +80,32 @@ export default function Home() {
     }
   };
 
+  // Fetch total pending lent amount
+  const fetchPendingLent = async () => {
+    try {
+      if (!user || !user.uid) return;
+      const q = query(collection(db, 'loans'), where('userId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      // Sum all latest pendingAmount for each contact
+      const latestByContact = {};
+      querySnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const contact = data.contact || 'Unknown';
+        const createdAt = data.createdAt || '';
+        if (!latestByContact[contact] || createdAt > latestByContact[contact].createdAt) {
+          latestByContact[contact] = { pendingAmount: data.pendingAmount || 0, createdAt };
+        }
+      });
+      let total = 0;
+      Object.values(latestByContact).forEach(val => {
+        if (val.pendingAmount > 0) total += val.pendingAmount;
+      });
+      setPendingLent(total);
+    } catch (err) {
+      setPendingLent(0);
+    }
+  };
+
   // Update the fetchUserData function
   const fetchUserData = async (userId) => {
     try {
@@ -130,6 +158,7 @@ export default function Home() {
   useEffect(() => {
     if (user) {
       fetchSummaryData(selectedYear);
+      fetchPendingLent();
     }
   }, [selectedYear]);
 
@@ -338,9 +367,8 @@ export default function Home() {
         </View>
 
         <StatCard label="Total Expenses" amount={totals.expenses} />
-        <StatCard label="Lent" amount={totals.lent} />
+        <StatCard label="Lent" amount={pendingLent} />
         <StatCard label="Borrowed" amount={totals.borrowed} />
-        <StatCard label="Pending Repayments" amount={totals.pendingRepayments} />
         <StatCard label="Investments" amount={totals.investments} />
 
         {/* <View style={styles.navSection}>
