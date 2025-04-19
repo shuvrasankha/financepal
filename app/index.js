@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../firebase';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp, getDoc, doc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/HomeStyles';
 import BottomNavBar from './components/BottomNavBar';
@@ -121,6 +121,20 @@ export default function Home() {
     }
   };
 
+  // Fetch user's first name from Firestore
+  const fetchUserName = async (uid) => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', uid));
+      if (userDoc.exists()) {
+        setUserName(userDoc.data().firstName || '');
+      } else {
+        setUserName('');
+      }
+    } catch (err) {
+      setUserName('');
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchSummaryData(selectedYear);
@@ -132,7 +146,7 @@ export default function Home() {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         console.log('User authenticated:', user.uid);
-        // Only fetch summary data, do not fetch user data
+        fetchUserName(user.uid); // Fetch first name
         fetchSummaryData(selectedYear);
       } else {
         console.log('No user, redirecting to login');
@@ -351,7 +365,7 @@ export default function Home() {
         <View style={styles.welcomeSection}>
           <View style={styles.headerContainer}>
             <Text style={styles.welcomeText}>
-              Hi there!
+              {userName ? `Hi, ${userName}!` : 'Hi there!'}
             </Text>
             <TouchableOpacity 
               style={styles.settingsButton}
