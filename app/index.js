@@ -407,8 +407,7 @@ export default function Home() {
               </Text>
               {/* Removed settings icon from top */}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
-              <Text style={{ color: '#6b7280', fontSize: 15, marginRight: 8 }}>Showing data for</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 16 }}>
               <TouchableOpacity 
                 style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eef2ff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 }}
                 onPress={() => setShowYearPicker(true)}
