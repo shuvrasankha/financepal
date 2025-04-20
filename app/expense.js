@@ -88,7 +88,9 @@ const Expense = () => {
       if (user) {
         console.log('Authenticated user:', user.uid);
         setUserId(user.uid);
+        // Fetch both daily and monthly data immediately
         fetchExpenses();
+        fetchMonthlyExpenses();
       } else {
         console.log('No user is signed in. Redirecting to login...');
         navigation.replace('Login');
@@ -407,12 +409,26 @@ const Expense = () => {
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* Removed Hello! greeting as requested */}
         <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop:46 }]}>Expenses</Text>
-        {/* Total Expenses Card */}
+        {/* Total Expense Card */}
         <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
-          <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 6 }}>
-            {`Total Expense ${getMonthName(viewMonth)} Month`}
-          </Text>
-          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#6366f1' }}>₹{monthlyTotal.toLocaleString('en-IN')}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: '100%' }}>
+            {/* Monthly Total */}
+            <View style={{ alignItems: 'center', flex: 1, borderRightWidth: 1, borderRightColor: '#e5e7eb' }}>
+              <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 6 }}>
+                {`${getMonthName(viewMonth)} Total`}
+              </Text>
+              <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#6366f1' }}>₹{monthlyTotal.toLocaleString('en-IN')}</Text>
+            </View>
+            {/* Daily Total */}
+            <View style={{ alignItems: 'center', flex: 1 }}>
+              <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 6 }}>
+                {viewDate.toDateString() === new Date().toDateString() ? "Today's Total" : "Daily Total"}
+              </Text>
+              <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#6366f1' }}>
+                ₹{expenses.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString('en-IN')}
+              </Text>
+            </View>
+          </View>
         </View>
         {/* Monthly Summary Card */}
         <View style={[styles.card, { marginBottom: 24, padding: 0, overflow: 'hidden', borderRadius: 18, shadowColor: '#6366f1', shadowOpacity: 0.10, shadowRadius: 12, elevation: 3 }]}> 
