@@ -58,7 +58,7 @@ function AddInvestmentForm({ onClose, onAdded }) {
         note: form.note,
         stockName: form.stockName,
         mfName: form.mfName,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(), // Store as ISO string with full datetime
       });
       alert('Investment added!');
       onClose();
@@ -69,6 +69,7 @@ function AddInvestmentForm({ onClose, onAdded }) {
   };
 
   return (
+    <ScrollView style={{ flex: 1, backgroundColor: '#fff', padding: 10 }}>
     <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
       {/* Header with Cancel Button */}
       <View style={{ 
@@ -202,6 +203,7 @@ function AddInvestmentForm({ onClose, onAdded }) {
         </TouchableOpacity>
       </View>
     </View>
+    </ScrollView>
   );
 }
 
@@ -216,8 +218,27 @@ export default function Investment() {
       if (!user) return;
       const q = query(collection(db, 'investments'), where('userId', '==', user.uid));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => doc.data());
-      setInvestments(data);
+      const data = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        createdAt: doc.data().createdAt || '',
+      }));
+
+      // Group investments by category
+      const grouped = {};
+      data.forEach(inv => {
+        const type = inv.investmentType;
+        if (!grouped[type]) grouped[type] = [];
+        grouped[type].push(inv);
+      });
+
+      // For each category, filter to only those with valid createdAt, then pick the one with the latest createdAt
+      const latestInvestments = Object.values(grouped).map(invs => {
+        const valid = invs.filter(inv => inv.createdAt && !isNaN(Date.parse(inv.createdAt)));
+        if (valid.length === 0) return null;
+        return valid.reduce((latest, inv) => new Date(inv.createdAt) > new Date(latest.createdAt) ? inv : latest, valid[0]);
+      }).filter(Boolean);
+
+      setInvestments(latestInvestments);
     } catch (e) {
       setInvestments([]);
     }
@@ -231,17 +252,14 @@ export default function Investment() {
   const totalValue = investments.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
 
   // Calculate asset allocation from fetched investments
-  const assetAllocMap = {};
-  investments.forEach(inv => {
-    const type = inv.investmentType;
-    if (!assetAllocMap[type]) assetAllocMap[type] = 0;
-    assetAllocMap[type] += Number(inv.amount) || 0;
+  const assetAlloc = ASSET_TYPES.map(asset => {
+    // Find the latest investment for this asset type
+    const inv = investments.find(i => i.investmentType === asset.type);
+    return {
+      ...asset,
+      value: inv ? Number(inv.amount) : 0
+    };
   });
-  // Build asset allocation array for display (preserve color/icon order)
-  const assetAlloc = ASSET_TYPES.map(asset => ({
-    ...asset,
-    value: assetAllocMap[asset.type] || 0
-  }));
 
   // Pie chart and asset trend data from fetched investments
   // Pie chart: assetAlloc

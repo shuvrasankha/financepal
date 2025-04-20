@@ -279,7 +279,7 @@ export default function Home() {
               <Text style={[styles.cardDescription, { color: '#6b7280', fontSize: 12 }]}>Total spent in {selectedYear}</Text>
             </View>
           </View>
-          <Text style={[styles.cardAmount, { color: '#6366f1', fontSize: 26, marginBottom: 8 }]} numberOfLines={1}>
+          <Text style={[styles.cardAmount, { color: '#6b7280', fontSize: 26, marginBottom: 8 }]} numberOfLines={1}>
             ₹{amount.toLocaleString('en-IN')}
           </Text>
           <View style={styles.cardActions}>
