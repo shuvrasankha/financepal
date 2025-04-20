@@ -279,7 +279,7 @@ export default function Home() {
               <Text style={[styles.cardDescription, { color: '#6b7280', fontSize: 12 }]}>Total spent in {selectedYear}</Text>
             </View>
           </View>
-          <Text style={[styles.cardAmount, { color: '#111827', fontSize: 26, marginBottom: 8 }]} numberOfLines={1}>
+          <Text style={[styles.cardAmount, { color: '#6366f1', fontSize: 26, marginBottom: 8 }]} numberOfLines={1}>
             ₹{amount.toLocaleString('en-IN')}
           </Text>
           <View style={styles.cardActions}>
@@ -394,19 +394,21 @@ export default function Home() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          <View style={{ paddingHorizontal: 20, paddingTop: 46, paddingBottom: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 16 }}>
+        <ScrollView style={{ paddingHorizontal: 16, paddingTop: 46, paddingBottom: 16 }} contentContainerStyle={{ flexGrow: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 16 }}>
               <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1e3a8a', flex: 1, flexWrap: 'wrap' }}>
                 {userName ? `Hi, ${userName}!` : 'Hi there!'}
               </Text>
-              {/* Removed settings icon from top */}
             </View>
+        </ScrollView>
+
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }>
+          <View style={{ paddingHorizontal: 20, paddingTop: 46, paddingBottom: 12 }}>
+            
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 16 }}>
               <TouchableOpacity 
                 style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eef2ff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 }}
@@ -432,14 +434,13 @@ export default function Home() {
             </View>
           </View>
           <YearSelector />
-        </ScrollView>
-        <ScrollView contentContainerStyle={{ paddingBottom: 70 }}>
-            <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
-            <Text style={{ color: '#6366f1', fontSize: 16, fontWeight: '600', marginBottom: 10, opacity: 0.6 }}>
-                "Wealth is not about having a lot of money; it's about having a lot of options." – Chris Rock
+          <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
+            <Text style={{ color: '#6366f1', fontSize: 16, fontWeight: '600', marginBottom: 10, opacity: 0.5,alignContent: 'center', textAlign: 'center' }}>
+                "Wealth is not about having a lot of money; it's about having a lot of options."                          – Chris Rock
               </Text>
             </View>
-          </ScrollView>
+        </ScrollView>
+            
         <BottomNavBar />
       </LinearGradient>
     </>
