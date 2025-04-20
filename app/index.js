@@ -433,13 +433,13 @@ export default function Home() {
           </View>
           <YearSelector />
         </ScrollView>
-        <ScrollView>
-          <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
-          <Text style={{ color: '#6366f1', fontSize: 16, fontWeight: '600', marginBottom: 10,opacity: 0.6 }}>
-              "Wealth is not about having a lot of money; it's about having a lot of options." – Chris Rock
-            </Text>
-          </View>
-        </ScrollView>
+        <ScrollView contentContainerStyle={{ paddingBottom: 70 }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
+            <Text style={{ color: '#6366f1', fontSize: 16, fontWeight: '600', marginBottom: 10, opacity: 0.6 }}>
+                "Wealth is not about having a lot of money; it's about having a lot of options." – Chris Rock
+              </Text>
+            </View>
+          </ScrollView>
         <BottomNavBar />
       </LinearGradient>
     </>
