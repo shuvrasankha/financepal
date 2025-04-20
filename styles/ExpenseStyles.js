@@ -118,6 +118,7 @@ const styles = StyleSheet.create({
   viewDateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 16,
   },
   viewDateButton: {
     flexDirection: 'row',
@@ -279,6 +280,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginVertical: 12,
     height: 160,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   noExpensesText: {
     color: '#6b7280',
