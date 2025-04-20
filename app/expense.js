@@ -416,31 +416,8 @@ const Expense = () => {
         </View>
         {/* Monthly Summary Card */}
         <View style={[styles.card, { marginBottom: 24, padding: 0, overflow: 'hidden', borderRadius: 18, shadowColor: '#6366f1', shadowOpacity: 0.10, shadowRadius: 12, elevation: 3 }]}> 
-          <View style={{ backgroundColor: '#fff', paddingVertical: 18, paddingHorizontal: 20, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
-            <Text style={{ color: '#111', fontSize: 22, fontWeight: 'bold', letterSpacing: 0.5 }}>Expense Summary ({viewDate.toLocaleDateString()})</Text>
-          </View>
-          <View style={{ paddingHorizontal: 0, paddingBottom: 8 }}>
-            {/* Table Header */}
-            <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', paddingVertical: 14, paddingHorizontal: 18, borderTopWidth: 0, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-              <Text style={{ flex: 2, fontWeight: '700', color: '#6366f1', fontSize: 16, letterSpacing: 0.2 }}>Category</Text>
-              <Text style={{ flex: 1, fontWeight: '700', color: '#6366f1', fontSize: 16, textAlign: 'right', letterSpacing: 0.2 }}>Amount</Text>
-            </View>
-            {/* Table Rows */}
-            {Object.entries(
-              expenses.reduce((acc, exp) => {
-                if (exp.date === viewDate.toISOString().split('T')[0]) {
-                  acc[exp.category] = (acc[exp.category] || 0) + exp.amount;
-                }
-                return acc;
-              }, {})
-            ).map(([category, amount], idx) => (
-              <View key={category + idx} style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: idx % 2 === 0 ? '#fff' : '#f8faff', paddingVertical: 16, paddingHorizontal: 18 }}>
-                <Ionicons name={CATEGORY_ICONS[category] || 'pricetag'} size={24} color={CATEGORY_COLORS[category] || '#6366f1'} style={{ marginRight: 10 }} />
-                <Text style={{ flex: 2, color: '#222', fontWeight: '600', fontSize: 15 }}>{category}</Text>
-                <Text style={{ flex: 1, color: '#6366f1', fontWeight: '700', fontSize: 16, textAlign: 'right' }}>₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
-              </View>
-            ))}
-          </View>
+          
+          
         </View>
         <View style={styles.viewToggleContainer}>
           <TouchableOpacity 
@@ -465,7 +442,6 @@ const Expense = () => {
           // Daily View
           <>
             <View style={styles.expenseListHeader}>
-              <Text style={styles.subTitle}>View Expenses By Date</Text>
               
               <View style={styles.viewDateContainer}>
                 {Platform.OS !== 'web' ? (
