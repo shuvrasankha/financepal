@@ -70,16 +70,15 @@ function AddInvestmentForm({ onClose, onAdded }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 18 }}>Add Investment</Text>
+      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 18, marginTop:46 }}>Add Investment</Text>
       <Text style={{ marginBottom: 8, fontSize: 18 }}>Amount</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <Text style={{ fontSize: 20, marginRight: 4 }}>₹</Text>
         <TextInput
           style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, flex: 1, fontSize: 18 }}
           keyboardType="numeric"
           value={form.amount}
           onChangeText={text => handleChange('amount', text.replace(/[^0-9.]/g, ''))}
-          placeholder="5000"
+          placeholder="₹5000"
         />
       </View>
       <Text style={{ marginBottom: 8, fontSize: 18 }}>Investment Type</Text>
@@ -158,13 +157,12 @@ function AddInvestmentForm({ onClose, onAdded }) {
           }}
         />
       )}
-      <Text style={{ marginBottom: 8, fontSize: 18 }}>Note (optional)</Text>
+      <Text style={{ marginBottom: 8, fontSize: 18 }}>Note</Text>
       <TextInput
         style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 28, fontSize: 18 }}
         value={form.note}
         onChangeText={text => handleChange('note', text)}
         placeholder="Any note..."
-        multiline
       />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
         <TouchableOpacity style={{ flex: 1, backgroundColor: '#6366f1', padding: 16, borderRadius: 8, alignItems: 'center', marginRight: 10, flexDirection: 'row', justifyContent: 'center' }} onPress={handleSubmit}>
@@ -439,6 +437,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 10,
     color: '#1f2937',
+    marginTop: 20,
   },
   assetCard: {
     flexDirection: 'row',
