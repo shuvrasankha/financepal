@@ -144,7 +144,7 @@ export default function Settings() {
 
   return (
     <>
-      <ScrollView>
+      <ScrollView contentContainerStyle={{ paddingBottom: 70 }}>
         <View style={styles.container}>
           <View style={styles.profileSection}>
             {profileLoading ? (

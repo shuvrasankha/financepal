@@ -247,6 +247,7 @@ const ExpenseAnalysis = () => {
   };
 
   return (
+    <>
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
@@ -329,8 +330,9 @@ const ExpenseAnalysis = () => {
           </>
         )}
       </ScrollView>
-      <BottomNavBar />
     </SafeAreaView>
+    <BottomNavBar />
+    </>
   );
 };
 
@@ -348,7 +350,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingBottom: 90, // Add padding to account for the nav bar
+    paddingBottom: 0, // Reduced from 90 to match the nav bar height
   },
   header: {
     padding: 20,

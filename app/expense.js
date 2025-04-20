@@ -438,7 +438,7 @@ const Expense = () => {
   return (
     <>
       <SafeAreaView style={[styles.container, { flex: 1 }]}>
-        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop: 46,paddingBottom:20, marginHorizontal: 16, }]}>Expenses</Text>
+        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop: 20,paddingBottom:20, marginHorizontal: 16, }]}>Expenses</Text>
         
         {/* Total Expense Card */}
         <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18,marginHorizontal: 16, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
@@ -633,7 +633,7 @@ const Expense = () => {
                 )}
                 scrollEnabled={true}
                 style={[styles.expensesList, { flex: 1 }]}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 70 }}
                 ListFooterComponent={() => hasMore && (
                   <TouchableOpacity
                     style={{
@@ -779,7 +779,7 @@ const Expense = () => {
               )}
               scrollEnabled={true}
               style={[styles.expensesList, { flex: 1 }]}
-              contentContainerStyle={{ paddingBottom: 100 }}
+              contentContainerStyle={{ paddingBottom: 70 }}
               ListEmptyComponent={() => (
                 <View style={styles.noExpensesContainer}>
                   <Ionicons name="receipt-outline" size={48} color="#d1d5db" />
