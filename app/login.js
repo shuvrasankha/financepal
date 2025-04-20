@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Platform,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
@@ -29,6 +30,16 @@ export default function Login() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        router.replace('/');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleLogin = async () => {
     setError({ email: '', password: '', general: '' });
@@ -45,6 +56,7 @@ export default function Login() {
       return;
     }
 
+    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setShowSuccess(true); // Show success modal instead of immediate navigation
@@ -57,6 +69,8 @@ export default function Login() {
         setErrorMessage('Login failed. Please try again.');
       }
       setShowErrorModal(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -189,8 +203,12 @@ export default function Login() {
 
           {error.general ? <Text style={styles.errorText}>{error.general}</Text> : null}
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>Sign In</Text>
+          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.footer}>

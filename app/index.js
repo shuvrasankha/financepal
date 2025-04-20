@@ -367,12 +367,6 @@ export default function Home() {
             <Text style={styles.welcomeText}>
               {userName ? `Hi, ${userName}!` : 'Hi there!'}
             </Text>
-            <TouchableOpacity 
-              style={styles.settingsButton}
-              onPress={() => router.push('/settings')}
-            >
-              <Ionicons name="settings-outline" size={24} color="#6b7280" />
-            </TouchableOpacity>
           </View>
           <View style={styles.yearSelectorRow}>
             <Text style={styles.yearSelectorLabel}>Showing data for</Text>
