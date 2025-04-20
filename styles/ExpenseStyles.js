@@ -40,6 +40,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 16,
     color: '#1f2937',
+    marginLeft: 16,
   },
   card: {
     backgroundColor: '#ffffff',
@@ -290,6 +291,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
     padding: 4,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   viewToggleButton: {
     flex: 1,
@@ -321,6 +328,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginVertical: 16,
+    marginHorizontal: 16,
     backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
@@ -348,6 +356,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    marginLeft: 16,
+    marginRight: 16,
   },
   summaryTitle: {
     fontSize: 18,

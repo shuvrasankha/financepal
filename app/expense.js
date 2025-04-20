@@ -438,10 +438,10 @@ const Expense = () => {
   return (
     <>
       <SafeAreaView style={[styles.container, { flex: 1 }]}>
-        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop: 46 }]}>Expenses</Text>
+        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop: 46,paddingBottom:20, marginHorizontal: 16, }]}>Expenses</Text>
         
         {/* Total Expense Card */}
-        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
+        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18,marginHorizontal: 16, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-around', width: '100%' }}>
             {/* Monthly Total */}
             <View style={{ alignItems: 'center', flex: 1, borderRightWidth: 1, borderRightColor: '#e5e7eb' }}>
@@ -704,6 +704,7 @@ const Expense = () => {
                   shadowOpacity: 0.08,
                   shadowRadius: 8,
                   elevation: 2,
+                  marginHorizontal: 16,
                 }}>
                   {/* Category Icon */}
                   <View style={{
