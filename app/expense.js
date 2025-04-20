@@ -406,7 +406,7 @@ const Expense = () => {
     <>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* Removed Hello! greeting as requested */}
-        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5 }]}>Expenses</Text>
+        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop:46 }]}>Expenses</Text>
         {/* Total Expenses Card */}
         <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
           <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 6 }}>

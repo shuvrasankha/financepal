@@ -1,26 +1,38 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Dimensions } from 'react-native';
+import { 
+  View, 
+  Text, 
+  ScrollView, 
+  StyleSheet, 
+  ActivityIndicator, 
+  TouchableOpacity, 
+  Dimensions,
+  SafeAreaView 
+} from 'react-native';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { LineChart, PieChart } from 'react-native-chart-kit';
-import { G, Text as SvgText, Line } from 'react-native-svg';
-import { View as RNView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from './components/BottomNavBar';
 
-const months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-];
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const ExpenseAnalysis = () => {
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
-  const [monthlyTotals, setMonthlyTotals] = useState([]);
-  const [yearlyTotal, setYearlyTotal] = useState(0);
-  const [categoryTotals, setCategoryTotals] = useState({});
-  const [viewMode, setViewMode] = useState('monthly'); // 'monthly' or 'yearly'
-  const [yearlyTotalsArr, setYearlyTotalsArr] = useState([]);
-  const [monthlyChange, setMonthlyChange] = useState(null);
+  const [viewMode, setViewMode] = useState('monthly');
+  const [summaryData, setSummaryData] = useState({
+    monthly: {
+      data: [],
+      total: 0,
+      categories: {},
+      monthlyChange: null
+    },
+    yearly: {
+      data: [],
+      total: 0,
+      categories: {}
+    }
+  });
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -32,615 +44,485 @@ const ExpenseAnalysis = () => {
           setLoading(false);
           return;
         }
+
         const q = query(collection(db, 'expenses'), where('userId', '==', user.uid));
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => doc.data());
-        setExpenses(data);
-        const now = new Date();
-        const year = now.getFullYear();
-        if (viewMode === 'monthly') {
-          const monthly = Array(12).fill(0);
-          let yearly = 0;
-          const catTotals = {};
-          data.forEach(exp => {
-            if (exp.date) {
-              const d = new Date(exp.date);
-              if (d.getFullYear() === year) {
-                // Only include data up to the current month and day
-                if (
-                  d.getMonth() < now.getMonth() ||
-                  (d.getMonth() === now.getMonth() && d.getDate() <= now.getDate())
-                ) {
-                  monthly[d.getMonth()] += Number(exp.amount) || 0;
-                  yearly += Number(exp.amount) || 0;
-                }
-              }
-            }
-            if (exp.category) {
-              catTotals[exp.category] = (catTotals[exp.category] || 0) + (Number(exp.amount) || 0);
-            }
-          });
-          // Zero out future months
-          for (let i = now.getMonth() + 1; i < 12; i++) {
-            monthly[i] = 0;
-          }
-          setMonthlyTotals(monthly);
-          setYearlyTotal(yearly);
-          setCategoryTotals(catTotals);
-        } else {
-          // Yearly view: group by year
-          const yearlyMap = {};
-          const catTotals = {};
-          data.forEach(exp => {
-            if (exp.date) {
-              const d = new Date(exp.date);
-              const y = d.getFullYear();
-              yearlyMap[y] = (yearlyMap[y] || 0) + (Number(exp.amount) || 0);
-            }
-            if (exp.category) {
-              catTotals[exp.category] = (catTotals[exp.category] || 0) + (Number(exp.amount) || 0);
-            }
-          });
-          // Sort years ascending
-          const years = Object.keys(yearlyMap).sort();
-          setYearlyTotalsArr(years.map(y => ({ year: y, total: yearlyMap[y] })));
-          setCategoryTotals(catTotals);
-        }
-      } catch (e) {
-        setExpenses([]);
-      }
-      setLoading(false);
-    };
-    fetchExpenses();
-  }, [viewMode]);
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          amount: Number(doc.data().amount) || 0,
+          date: new Date(doc.data().date)
+        })).filter(exp => exp.amount > 0 && !isNaN(exp.date));
 
-  useEffect(() => {
-    if (monthlyTotals && monthlyTotals.length > 1) {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const prevMonth = currentMonth - 1;
-      if (currentMonth > 0) {
-        const thisMonth = monthlyTotals[currentMonth];
-        const lastMonth = monthlyTotals[prevMonth];
-        if (lastMonth > 0) {
-          const percent = ((thisMonth - lastMonth) / lastMonth) * 100;
-          setMonthlyChange(percent);
-        } else if (thisMonth > 0) {
-          setMonthlyChange(100);
-        } else {
-          setMonthlyChange(0);
+        // Sort by date
+        data.sort((a, b) => b.date - a.date);
+        setExpenses(data);
+
+        // Process data for both views
+        processData(data);
+      } catch (e) {
+        console.error('Error fetching expenses:', e);
+        resetData();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpenses();
+  }, []);
+
+  const resetData = () => {
+    setSummaryData({
+      monthly: {
+        data: Array(12).fill(0),
+        total: 0,
+        categories: {},
+        monthlyChange: null
+      },
+      yearly: {
+        data: [],
+        total: 0,
+        categories: {}
+      }
+    });
+  };
+
+  const processData = (data) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    // Monthly processing
+    const monthlyData = Array(12).fill(0);
+    const monthlyCategories = {};
+    let monthlyTotal = 0;
+
+    // Yearly processing
+    const yearlyMap = new Map();
+    const yearlyCategories = {};
+    let yearlyTotal = 0;
+
+    // Initialize last 5 years
+    for (let i = currentYear - 4; i <= currentYear; i++) {
+      yearlyMap.set(i, 0);
+    }
+
+    data.forEach(exp => {
+      const expYear = exp.date.getFullYear();
+      const expMonth = exp.date.getMonth();
+
+      // Process monthly data
+      if (expYear === currentYear) {
+        if (expMonth <= currentMonth) {
+          monthlyData[expMonth] += exp.amount;
+          monthlyTotal += exp.amount;
+
+          if (exp.category) {
+            monthlyCategories[exp.category] = (monthlyCategories[exp.category] || 0) + exp.amount;
+          }
         }
-      } else {
-        setMonthlyChange(null);
+      }
+
+      // Process yearly data
+      if (yearlyMap.has(expYear)) {
+        yearlyMap.set(expYear, yearlyMap.get(expYear) + exp.amount);
+        yearlyTotal += exp.amount;
+
+        if (exp.category) {
+          yearlyCategories[exp.category] = (yearlyCategories[exp.category] || 0) + exp.amount;
+        }
+      }
+    });
+
+    // Calculate monthly change
+    let monthlyChange = null;
+    if (currentMonth > 0) {
+      const thisMonth = monthlyData[currentMonth];
+      const lastMonth = monthlyData[currentMonth - 1];
+      if (lastMonth > 0) {
+        monthlyChange = ((thisMonth - lastMonth) / lastMonth) * 100;
       }
     }
-  }, [monthlyTotals]);
 
-  const screenWidth = Dimensions.get('window').width;
-  const chartWidth = Math.max(screenWidth - 32, 260);
-  const pieSize = Math.min(screenWidth - 64, 180);
+    // Convert yearly map to array
+    const yearlyData = Array.from(yearlyMap).map(([year, total]) => ({
+      year,
+      total: Math.round(total * 100) / 100
+    }));
 
-  if (loading) {
-    return <View style={{flex:1,justifyContent:'center',alignItems:'center'}}><ActivityIndicator size="large" color="#6366f1" /></View>;
-  }
+    setSummaryData({
+      monthly: {
+        data: monthlyData,
+        total: monthlyTotal,
+        categories: monthlyCategories,
+        monthlyChange
+      },
+      yearly: {
+        data: yearlyData,
+        total: yearlyTotal,
+        categories: yearlyCategories
+      }
+    });
+  };
+
+  const renderCategoryList = (categories) => {
+    const sortedCategories = Object.entries(categories)
+      .sort(([, a], [, b]) => b - a)
+      .map(([category, amount]) => ({
+        category,
+        amount,
+        percentage: (amount / (viewMode === 'monthly' ? summaryData.monthly.total : summaryData.yearly.total) * 100)
+      }));
+
+    return sortedCategories.map((item, index) => (
+      <View key={item.category} style={styles.categoryItem}>
+        <View style={styles.categoryHeader}>
+          <View style={[styles.categoryIcon, { backgroundColor: `${chartColors[index % chartColors.length]}22` }]}>
+            <Ionicons 
+              name={getCategoryIcon(item.category)} 
+              size={20} 
+              color={chartColors[index % chartColors.length]} 
+            />
+          </View>
+          <View style={styles.categoryInfo}>
+            <Text style={styles.categoryName}>{item.category}</Text>
+            <Text style={styles.categoryAmount}>₹{new Intl.NumberFormat('en-IN').format(item.amount)}</Text>
+          </View>
+          <Text style={styles.categoryPercentage}>{item.percentage.toFixed(1)}%</Text>
+        </View>
+        <View style={styles.percentageBar}>
+          <View style={[styles.percentageFill, { 
+            width: `${item.percentage}%`,
+            backgroundColor: chartColors[index % chartColors.length]
+          }]} />
+        </View>
+      </View>
+    ));
+  };
+
+  const getCategoryIcon = (category) => {
+    const icons = {
+      Food: 'fast-food-outline',
+      Transport: 'car-outline',
+      Shopping: 'cart-outline',
+      Bills: 'document-text-outline',
+      Entertainment: 'game-controller-outline',
+      Healthcare: 'medical-outline',
+      Education: 'school-outline',
+      Travel: 'airplane-outline',
+      Others: 'apps-outline'
+    };
+    return icons[category] || 'pricetag-outline';
+  };
+
+  const renderBarChart = () => {
+    const data = viewMode === 'monthly' 
+      ? summaryData.monthly.data 
+      : summaryData.yearly.data.map(item => item.total);
+    
+    const labels = viewMode === 'monthly'
+      ? months
+      : summaryData.yearly.data.map(item => item.year);
+
+    const maxValue = Math.max(...data);
+
+    return (
+      <View style={styles.barChartContainer}>
+        {data.map((value, index) => (
+          <View key={index} style={styles.barColumn}>
+            <View style={styles.barWrapper}>
+              <View style={[
+                styles.bar, 
+                { 
+                  height: maxValue > 0 ? `${(value / maxValue * 100)}%` : 0,
+                  backgroundColor: '#6366f1'
+                }
+              ]} />
+            </View>
+            <Text style={styles.barLabel}>{labels[index]}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  };
 
   return (
-    <>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={[styles.title, { textAlign: 'left', marginLeft: 4 }]}>Expense Analysis</Text>
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'monthly' && styles.toggleButtonActive]}
-            onPress={() => setViewMode('monthly')}
-          >
-            <Text style={[styles.toggleButtonText, viewMode === 'monthly' && styles.toggleButtonTextActive]}>Monthly</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleButton, viewMode === 'yearly' && styles.toggleButtonActive]}
-            onPress={() => setViewMode('yearly')}
-          >
-            <Text style={[styles.toggleButtonText, viewMode === 'yearly' && styles.toggleButtonTextActive]}>Yearly</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Expense Analysis</Text>
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'monthly' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('monthly')}
+            >
+              <Text style={[styles.toggleButtonText, viewMode === 'monthly' && styles.toggleButtonTextActive]}>
+                Monthly
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.toggleButton, viewMode === 'yearly' && styles.toggleButtonActive]}
+              onPress={() => setViewMode('yearly')}
+            >
+              <Text style={[styles.toggleButtonText, viewMode === 'yearly' && styles.toggleButtonTextActive]}>
+                Yearly
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        {viewMode === 'monthly' ? (
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Monthly & Yearly Spendings</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 8}}>
-              <LineChart
-                data={{
-                  labels: months,
-                  datasets: [
-                    { data: monthlyTotals.map(v => Number(v.toFixed(2))) }
-                  ]
-                }}
-                width={chartWidth}
-                height={180}
-                yAxisLabel="₹"
-                chartConfig={chartConfig}
-                style={styles.chart}
-                bezier
-                fromZero
-              />
-            </ScrollView>
-            <Text style={styles.totalText}>Yearly Total: <Text style={{color:'#6366f1',fontWeight:'bold'}}>₹{yearlyTotal.toFixed(2)}</Text></Text>
+
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#6366f1" />
           </View>
         ) : (
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Yearly Spendings</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 8}}>
-              <LineChart
-                data={{
-                  labels: yearlyTotalsArr.map(y => y.year),
-                  datasets: [
-                    { data: yearlyTotalsArr.map(y => Number(y.total || 0)) }
-                  ]
-                }}
-                width={Math.max(yearlyTotalsArr.length * 60, 260)}
-                height={180}
-                yAxisLabel="₹"
-                chartConfig={chartConfig}
-                style={styles.chart}
-                bezier
-                fromZero
-              />
-            </ScrollView>
-          </View>
-        )}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Spendings by Category</Text>
-          <View style={styles.pieContainer}>
-            <View style={styles.pieChartSection}>
-              <View style={styles.pieWrapper}>
-                <PieChart
-                  data={Object.entries(categoryTotals).map(([cat, amt], i) => ({
-                    name: cat,
-                    population: amt,
-                    color: chartColors[i % chartColors.length],
-                    legendFontColor: '#22223b',
-                    legendFontSize: 13,
-                  }))}
-                  width={140}
-                  height={140}
-                  chartConfig={{
-                    ...pieChartConfig,
-                    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                  }}
-                  accessor="population"
-                  backgroundColor="transparent"
-                  paddingLeft="15"
-                  center={[10, 0]}
-                  absolute
-                  hasLegend={false}
-                />
+          <>
+            <View style={styles.summaryCard}>
+              <Text style={styles.cardLabel}>
+                {viewMode === 'monthly' ? 'Total Expenses This Year' : 'Total Expenses (5 Years)'}
+              </Text>
+              <Text style={styles.totalAmount}>
+                ₹{new Intl.NumberFormat('en-IN').format(
+                  viewMode === 'monthly' 
+                    ? summaryData.monthly.total 
+                    : summaryData.yearly.total
+                )}
+              </Text>
+              {summaryData.monthly.monthlyChange !== null && viewMode === 'monthly' && (
+                <View style={[
+                  styles.changeIndicator,
+                  { backgroundColor: summaryData.monthly.monthlyChange > 0 ? '#fef2f2' : '#f0fdf4' }
+                ]}>
+                  <Ionicons 
+                    name={summaryData.monthly.monthlyChange > 0 ? 'trending-up' : 'trending-down'} 
+                    size={20} 
+                    color={summaryData.monthly.monthlyChange > 0 ? '#ef4444' : '#22c55e'} 
+                  />
+                  <Text style={[
+                    styles.changeText,
+                    { color: summaryData.monthly.monthlyChange > 0 ? '#ef4444' : '#22c55e' }
+                  ]}>
+                    {Math.abs(summaryData.monthly.monthlyChange).toFixed(1)}% 
+                    {summaryData.monthly.monthlyChange > 0 ? ' increase' : ' decrease'} from last month
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.chartCard}>
+              <Text style={styles.cardLabel}>
+                {viewMode === 'monthly' ? 'Monthly Spending Pattern' : 'Yearly Spending Trend'}
+              </Text>
+              {renderBarChart()}
+            </View>
+
+            <View style={styles.categoriesCard}>
+              <Text style={styles.cardLabel}>Spending by Category</Text>
+              <View style={styles.categoriesList}>
+                {renderCategoryList(
+                  viewMode === 'monthly' 
+                    ? summaryData.monthly.categories 
+                    : summaryData.yearly.categories
+                )}
               </View>
             </View>
-            <View style={styles.legendSection}>
-              {Object.entries(categoryTotals).map(([cat, amt], i) => (
-                <View key={cat} style={styles.legendItem}>
-                  <View style={styles.legendRow}>
-                    <Text style={styles.legendNumber}>{cat === 'Transport' ? '172' : cat === 'Food' ? '50' : Math.round(amt)} {cat}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
-        {monthlyChange !== null && (
-          <View style={styles.monthlyChangeCard}>
-            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',width:'100%'}}>
-              <Text style={styles.monthlyChangeText}>
-                Your monthly expense has {monthlyChange > 0 ? 'increased' : monthlyChange < 0 ? 'decreased' : 'not changed'} by 
-                <Text style={[styles.monthlyChangePercent, { color: monthlyChange > 0 ? '#ef4444' : monthlyChange < 0 ? '#22c55e' : '#22223b' }]}> {Math.abs(monthlyChange).toFixed(1)}%</Text>
-              </Text>
-              {monthlyChange > 0 ? (
-                <Text style={[styles.arrowUp, { color: '#ef4444' }]}>▲</Text>
-              ) : monthlyChange < 0 ? (
-                <Text style={[styles.arrowDown, { color: '#22c55e' }]}>▼</Text>
-              ) : null}
-            </View>
-          </View>
+          </>
         )}
       </ScrollView>
       <BottomNavBar />
-    </>
+    </SafeAreaView>
   );
 };
 
 const chartColors = [
-  '#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#f97316', '#10b981', '#6b7280'
+  '#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', 
+  '#06b6d4', '#ec4899', '#f97316', '#10b981', '#6b7280'
 ];
 
-const chartConfig = {
-  backgroundColor: '#fff',
-  backgroundGradientFrom: '#fff',
-  backgroundGradientTo: '#fff',
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(79, 79, 79, ${opacity})`,
-  style: { borderRadius: 16 },
-  propsForDots: { r: '5', strokeWidth: '2', stroke: '#6366f1' },
-};
-
-const pieChartConfig = {
-  ...chartConfig,
-  color: () => '#fff',
-  labelColor: () => '#fff',
-};
-
-// Custom labels with lines for PieChart
-const LabelsWithLines = ({ slices, data }) => {
-  // slices prop is not available in react-native-svg-charts v6+, so we use data and manual math
-  // We'll only render the lines and category names on the right, not inside the pie
-  return (
-    <G>
-      {data.map((slice, i) => {
-        // Calculate angle for each slice
-        const total = data.reduce((sum, d) => sum + d.amount, 0);
-        let prev = 0;
-        for (let j = 0; j < i; j++) prev += data[j].amount;
-        const midAngle = ((prev + slice.amount / 2) / total) * 2 * Math.PI - Math.PI / 2;
-        const radius = 80; // radius for the pie
-        const startX = pieSize / 2 + radius * Math.cos(midAngle);
-        const startY = pieSize / 2 + radius * Math.sin(midAngle);
-        const endX = pieSize - 10;
-        const endY = pieSize / 2 - pieSize / 3 + i * 28;
-        return (
-          <G key={slice.key}>
-            {/* Line from pie to legend */}
-            <Line
-              x1={startX}
-              y1={startY}
-              x2={endX - 40}
-              y2={endY + 10}
-              stroke={slice.color}
-              strokeWidth={2}
-            />
-            {/* Amount inside pie slice */}
-            <SvgText
-              x={pieSize / 2 + (radius - 30) * Math.cos(midAngle)}
-              y={pieSize / 2 + (radius - 30) * Math.sin(midAngle)}
-              fill="#222"
-              fontSize="15"
-              fontWeight="bold"
-              alignmentBaseline="middle"
-              textAnchor="middle"
-            >
-              ₹{slice.amount}
-            </SvgText>
-          </G>
-        );
-      })}
-    </G>
-  );
-};
-
 const styles = StyleSheet.create({
-  container: {
-    padding: 8,
-    backgroundColor: '#f3f4f6',
-    flexGrow: 1,
-    minHeight: '100%',
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#22223b',
-    textAlign: 'center',
-    letterSpacing: 0.2,
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 90, // Add padding to account for the nav bar
+  },
+  header: {
+    padding: 20,
+    paddingBottom: 10,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
   },
   toggleContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    backgroundColor: '#e0e7ef',
-    borderRadius: 10,
-    padding: 2,
-    gap: 4,
-    alignSelf: 'center',
-    width: '90%',
-    maxWidth: 340,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+    padding: 4,
+    alignSelf: 'flex-start',
   },
   toggleButton: {
-    flex: 1,
     paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderRadius: 10,
   },
   toggleButtonActive: {
     backgroundColor: '#6366f1',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
   },
   toggleButtonText: {
-    color: '#6366f1',
+    fontSize: 14,
     fontWeight: '600',
-    fontSize: 15,
-    letterSpacing: 0.5,
+    color: '#6b7280',
   },
   toggleButtonTextActive: {
-    color: '#fff',
+    color: '#ffffff',
   },
-  sectionCard: {
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 10,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  summaryCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    margin: 16,
+    padding: 20,
     shadowColor: '#6366f1',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  sectionTitle: {
+  chartCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    margin: 16,
+    marginTop: 0,
+    padding: 20,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  categoriesCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    margin: 16,
+    marginTop: 0,
+    padding: 20,
+    shadowColor: '#6366f1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 32,
+  },
+  cardLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#4f4f4f',
-    letterSpacing: 0.2,
-  },
-  chart: {
-    borderRadius: 12,
-    marginRight: 8,
-    minWidth: 260,
-  },
-  pieWrapper: {
-    width: 140,
-    height: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pieRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    gap: 12,
-  },
-  pieCenteredWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginBottom: 4,
-    marginTop: 4,
-  },
-  pieChartCircleWrapper: {
-    width: 180,
-    height: 180,
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-    overflow: 'hidden',
-    borderRadius: 90,
-    backgroundColor: '#fff',
-    marginBottom: 8,
-  },
-  pieLegendBelowContainer: {
-    marginTop: 16,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  pieLegendBelowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 8,
-    width: '70%',
-    justifyContent: 'center',
-  },
-  pieLegendContainer: {
-    justifyContent: 'center',
-    marginLeft: 12,
-    alignSelf: 'flex-start',
-  },
-  pieLegendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  totalText: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#22223b',
-    textAlign: 'center',
+    color: '#6b7280',
+    marginBottom: 12,
     fontWeight: '500',
   },
-  noDataText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 8,
+  totalAmount: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#111827',
   },
-  legendContainer: {
-    marginTop: 8,
-    width: '100%',
-    alignSelf: 'center',
-    maxWidth: 260,
-  },
-  legendRow: {
+  changeIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
-    gap: 6,
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 12,
   },
-  legendDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 6,
-  },
-  legendLabel: {
+  changeText: {
+    marginLeft: 8,
     fontSize: 14,
-    color: '#22223b',
+    fontWeight: '600',
+  },
+  barChartContainer: {
+    flexDirection: 'row',
+    height: 200,
+    alignItems: 'flex-end',
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  barColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  barWrapper: {
+    width: '60%',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  bar: {
+    width: '100%',
+    backgroundColor: '#6366f1',
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+  },
+  barLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 8,
+  },
+  categoriesList: {
+    marginTop: 8,
+  },
+  categoryItem: {
+    marginBottom: 16,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  categoryInfo: {
     flex: 1,
   },
-  legendAmount: {
-    fontWeight: 'bold',
+  categoryName: {
     fontSize: 14,
-    color: '#6366f1',
-  },
-  pieRowRef: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: '100%',
-    gap: 0,
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  pieLegendRefContainer: {
-    marginLeft: 12,
-    alignSelf: 'flex-start',
-    justifyContent: 'flex-start',
-  },
-  pieLegendRefRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 18,
-    minWidth: 80,
-  },
-  victoryPieWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    marginBottom: 4,
-    marginTop: 4,
-  },
-  victoryLegendContainer: {
-    marginTop: 16,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  victoryLegendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 8,
-    width: '70%',
-    justifyContent: 'center',
-  },
-  pieChartRowFix: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    paddingVertical: 8,
-    gap: 0,
-  },
-  pieLegendRightContainer: {
-    marginLeft: 16,
-    alignSelf: 'flex-start',
-    justifyContent: 'center',
-  },
-  pieLegendRightRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    minWidth: 80,
-    gap: 8,
-  },
-  legendLabelRight: {
-    fontSize: 16,
-    color: '#22223b',
     fontWeight: '500',
-    minWidth: 70,
+    color: '#374151',
   },
-  legendAmountRight: {
-    fontWeight: 'bold',
-    fontSize: 16,
-    color: '#6366f1',
-    marginLeft: 8,
+  categoryAmount: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
   },
-  monthlyChangeCard: {
-    backgroundColor: '#f7f8fa',
-    borderRadius: 18,
-    padding: 18,
-    marginTop: 8,
-    marginBottom: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 1,
-    width: '98%',
-    alignSelf: 'center',
-  },
-  monthlyChangeText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#22223b',
-    textAlign: 'center',
-    letterSpacing: 0.1,
-  },
-  monthlyChangePercent: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    marginLeft: 2,
-  },
-  arrowUp: {
-    color: '#22c55e',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginLeft: 8,
-    alignSelf: 'flex-start',
-  },
-  arrowDown: {
-    color: '#ef4444',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginLeft: 8,
-    alignSelf: 'flex-start',
-  },
-  pieContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-  },
-  pieChartSection: {
-    width: '50%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: 0,
-  },
-  pieWrapper: {
-    width: 140,
-    height: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  legendSection: {
-    width: '50%',
-    paddingRight: 15,
-    paddingTop: 20,
-  },
-  legendItem: {
-    marginBottom: 24,
-  },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  legendNumber: {
-    fontSize: 16,
-    color: '#000',
-    fontWeight: '500',
-  },
-  legendName: {
+  categoryPercentage: {
     fontSize: 14,
-    color: '#000',
-    fontWeight: '400',
+    fontWeight: '600',
+    color: '#111827',
   },
+  percentageBar: {
+    height: 4,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginLeft: 48,
+  },
+  percentageFill: {
+    height: '100%',
+    borderRadius: 2,
+  }
 });
 
 export default ExpenseAnalysis;

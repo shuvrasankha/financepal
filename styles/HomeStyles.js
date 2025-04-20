@@ -9,6 +9,7 @@ export default StyleSheet.create({
   },
   container: {
     padding: 20,
+    paddingTop: 24,
     backgroundColor: '#f9f9f9',
   },
   header: {

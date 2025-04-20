@@ -400,8 +400,8 @@ export default function Home() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          <View style={{ paddingHorizontal: 20, paddingTop: 32, paddingBottom: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 46, paddingBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, marginTop: 16 }}>
               <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1e3a8a', flex: 1, flexWrap: 'wrap' }}>
                 {userName ? `Hi, ${userName}!` : 'Hi there!'}
               </Text>

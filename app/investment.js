@@ -234,7 +234,7 @@ export default function Investment() {
   return (
     <>
       <ScrollView style={styles.container}>
-        <Text style={styles.title}>Investments</Text>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop: 46 }}>Investments</Text>
         {/* Portfolio Value Card */}
         <View style={styles.portfolioCard}>
           <Text style={styles.portfolioLabel}>Portfolio Value</Text>

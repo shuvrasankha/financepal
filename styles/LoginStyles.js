@@ -15,6 +15,7 @@ export default StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
     padding: 24,
+    paddingTop: 24,
   },
   content: {
     flex: 1,
