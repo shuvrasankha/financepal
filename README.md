@@ -1,50 +1,54 @@
-# Welcome to your Expo app 👋
+# FinancePal
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+FinancePal is a cross-platform personal finance tracker built with [Expo](https://expo.dev) and React Native.
 
-## Get started
+## Features
+- Track daily and monthly expenses
+- Analyze spending by category and over time
+- Manage lending and borrowing with contacts
+- App lock with biometrics/PIN (Android & iOS)
+- Modern UI with bottom navigation
+- Firebase authentication and data storage
 
-1. Install dependencies
+## Getting Started
 
+1. **Install dependencies**
    ```bash
    npm install
    ```
-
-2. Start the app
-
+2. **Start the app**
    ```bash
-    npx expo start
+   npx expo start
+   ```
+   - For a custom app icon and lock features, use a development build:
+     ```bash
+     npx expo run:android
+     npx expo run:ios
+     ```
+3. **Build for production**
+   ```bash
+   eas build --platform android
+   eas build --platform ios
    ```
 
-In the output, you'll find options to open the app in a
+## Project Structure
+- `app/` — Main app code (screens, components)
+- `assets/` — Images, icons, fonts
+- `styles/` — Style files
+- `firebase.js` — Firebase config
+- `constants/` — App-wide constants
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Customization
+- **App Icon:** Place your icon at `assets/images/icon.png` (1024x1024 PNG).
+- **Adaptive Icon (Android):** `assets/images/adaptive-icon.png`
+- **Splash Screen:** `assets/images/splash-icon.png`
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Notes
+- App lock uses Expo LocalAuthentication and AsyncStorage.
+- Custom icons and splash screens only appear in standalone/dev builds, not in Expo Go.
+- For contact selection, the app requests device contact permissions.
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Learn More
+- [Expo Documentation](https://docs.expo.dev/)
+- [React Native Documentation](https://reactnative.dev/)
+- [Firebase Documentation](https://firebase.google.com/docs)

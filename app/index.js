@@ -405,9 +405,7 @@ export default function Home() {
               <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1e3a8a', flex: 1, flexWrap: 'wrap' }}>
                 {userName ? `Hi, ${userName}!` : 'Hi there!'}
               </Text>
-              <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: 8, borderRadius: 20, backgroundColor: '#e0e7ff' }}>
-                <Ionicons name="settings-outline" size={24} color="#6366f1" />
-              </TouchableOpacity>
+              {/* Removed settings icon from top */}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
               <Text style={{ color: '#6b7280', fontSize: 15, marginRight: 8 }}>Showing data for</Text>
@@ -435,6 +433,13 @@ export default function Home() {
             </View>
           </View>
           <YearSelector />
+        </ScrollView>
+        <ScrollView>
+          <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16 }}>
+          <Text style={{ color: '#6366f1', fontSize: 16, fontWeight: '600', marginBottom: 10,opacity: 0.6 }}>
+              "Wealth is not about having a lot of money; it's about having a lot of options." – Chris Rock
+            </Text>
+          </View>
         </ScrollView>
         <BottomNavBar />
       </LinearGradient>
