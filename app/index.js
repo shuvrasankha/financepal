@@ -6,6 +6,7 @@ import { collection, query, where, getDocs, Timestamp, getDoc, doc } from 'fireb
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/HomeStyles';
 import BottomNavBar from './components/BottomNavBar';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function Home() {
   const router = useRouter();
@@ -247,7 +248,8 @@ export default function Home() {
         return {
           icon: "trending-up-outline",
           color: "#3b82f6",
-          description: "Your investments"
+          description: "Total invested amount",
+          heading: "Investment"
         };
       default:
         return {
@@ -262,84 +264,114 @@ export default function Home() {
     const cardDetails = getCardDetails(label);
     const router = useRouter();
 
-    // Make the entire Investments card clickable and route to /investment dashboard
-    if (label === "Investments") {
+    // Special design for Total Expenses card
+    if (label === "Total Expenses") {
       return (
-        <TouchableOpacity onPress={() => router.push('/investment')} activeOpacity={0.85} style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View style={styles.cardTitleSection}>
-              <View style={[styles.cardIcon, { backgroundColor: cardDetails.color + '15' }]}> 
-                <Ionicons name={cardDetails.icon} size={24} color={cardDetails.color} />
-              </View>
-              <View>
-                <Text style={styles.cardLabel}>{label}</Text>
-                <Text style={styles.cardDescription}>{cardDetails.description}</Text>
-              </View>
+        <View style={[styles.card, { backgroundColor: '#f5f7ff', borderColor: '#6366f1', borderWidth: 1.5, minHeight: 170 }]}> 
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            <View style={{ backgroundColor: '#6366f1', borderRadius: 12, width: 44, height: 44, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+              <Ionicons name="wallet-outline" size={24} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardLabel, { color: '#6366f1', fontSize: 15, fontWeight: 'bold', lineHeight: 20 }]} numberOfLines={2}>
+                Total Expenses
+              </Text>
+              <Text style={[styles.cardDescription, { color: '#6b7280', fontSize: 12 }]}>Total spent in {selectedYear}</Text>
             </View>
           </View>
-          <Text style={[styles.cardAmount, amount < 0 && styles.negative]}>
-            {formatINR(amount)}
+          <Text style={[styles.cardAmount, { color: '#111827', fontSize: 26, marginBottom: 8 }]} numberOfLines={1}>
+            ₹{amount.toLocaleString('en-IN')}
           </Text>
           <View style={styles.cardActions}>
-            <View style={styles.addButton}>
-              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
-              <Text style={styles.addButtonText}>Add Investment</Text>
-            </View>
+            <TouchableOpacity 
+              style={[styles.addButton, { backgroundColor: '#6366f1' }]}
+              onPress={() => router.push('/expense')}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#fff" />
+              <Text style={[styles.addButtonText, { color: '#fff' }]}>Add Expense</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       );
     }
 
+    // Reference Total Expenses card for other cards
     return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardTitleSection}>
-            <View style={[styles.cardIcon, { backgroundColor: cardDetails.color + '15' }]}>
-              <Ionicons name={cardDetails.icon} size={24} color={cardDetails.color} />
-            </View>
-            <View>
-              <Text style={styles.cardLabel}>{label}</Text>
-              <Text style={styles.cardDescription}>{cardDetails.description}</Text>
-            </View>
+      <View style={[styles.card, {
+        backgroundColor: label === 'Lent' ? '#f0fdf4' : label === 'Borrowed' ? '#fef2f2' : label === 'Investments' ? '#f0f7ff' : '#fff',
+        borderColor: cardDetails.color,
+        borderWidth: 1.5,
+        minHeight: 170,
+        shadowColor: cardDetails.color,
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 4,
+      }]}> 
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <View style={{ backgroundColor: cardDetails.color, borderRadius: 12, width: 44, height: 44, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+            <Ionicons name={cardDetails.icon} size={24} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.cardLabel, { color: cardDetails.color, fontSize: 15, fontWeight: 'bold', lineHeight: 20 }]} numberOfLines={2}>
+              {cardDetails.heading || label}
+            </Text>
+            <Text style={[styles.cardDescription, { color: '#6b7280', fontSize: 12 }]} numberOfLines={2}>
+              {cardDetails.description}
+            </Text>
           </View>
         </View>
-        <Text style={[styles.cardAmount, amount < 0 && styles.negative]}>
+        <Text style={[styles.cardAmount, { color: cardDetails.color, fontSize: 24, marginBottom: 8 }]} numberOfLines={1}>
           {formatINR(amount)}
         </Text>
-  
         {/* Add button for specific cards */}
-        {label === "Total Expenses" && (
-          <View style={styles.cardActions}>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => router.push('/expense')}
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#6366f1" />
-              <Text style={styles.addButtonText}>Add Expense</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
         {label === "Lent" && (
           <View style={styles.cardActions}>
             <TouchableOpacity 
-              style={styles.addButton}
+              style={[styles.addButton, { backgroundColor: cardDetails.color, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16, minHeight: 38 }]}
               onPress={() => router.push('/lending')}
+              activeOpacity={0.85}
             >
-              <Ionicons name="add-circle-outline" size={20} color="#10b981" />
-              <Text style={styles.addButtonText}>Add Lending</Text>
+              <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={[styles.addButtonText, { color: '#fff', fontWeight: '700', fontSize: 14 }]}>Add Lending</Text>
             </TouchableOpacity>
           </View>
         )}
-
         {label === "Borrowed" && (
           <View style={styles.cardActions}>
-            <TouchableOpacity 
-              style={styles.addButton}
+            <TouchableOpacity
+              style={[
+                styles.addButton,
+                {
+                  backgroundColor: cardDetails.color,
+                  borderRadius: 8,
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  minHeight: 38,
+                  alignSelf: 'flex-start',
+                  width: 'auto',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 4,
+                },
+              ]}
               onPress={() => router.push('/borrowing')}
+              activeOpacity={0.85}
             >
-              <Ionicons name="add-circle-outline" size={20} color="#ef4444" />
-              <Text style={styles.addButtonText}>Add Borrowing</Text>
+              <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={[styles.addButtonText, { color: '#fff', fontWeight: '700', fontSize: 14 }]}>Add Borrowing</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {label === "Investments" && (
+          <View style={styles.cardActions}>
+            <TouchableOpacity 
+              style={[styles.addButton, { backgroundColor: cardDetails.color, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16, minHeight: 38 }]}
+              onPress={() => router.push('/investment')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={[styles.addButtonText, { color: '#fff', fontWeight: '700', fontSize: 14 }]}>Add Investment</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -356,46 +388,56 @@ export default function Home() {
 
   return (
     <>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+      <LinearGradient
+        colors={["#e0e7ff", "#f0fdf4"]}
+        style={{ flex: 1 }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View style={styles.welcomeSection}>
-          <View style={styles.headerContainer}>
-            <Text style={styles.welcomeText}>
-              {userName ? `Hi, ${userName}!` : 'Hi there!'}
-            </Text>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View style={{ paddingHorizontal: 20, paddingTop: 32, paddingBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#1e3a8a', flex: 1, flexWrap: 'wrap' }}>
+                {userName ? `Hi, ${userName}!` : 'Hi there!'}
+              </Text>
+              <TouchableOpacity onPress={() => router.push('/settings')} style={{ padding: 8, borderRadius: 20, backgroundColor: '#e0e7ff' }}>
+                <Ionicons name="settings-outline" size={24} color="#6366f1" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 8 }}>
+              <Text style={{ color: '#6b7280', fontSize: 15, marginRight: 8 }}>Showing data for</Text>
+              <TouchableOpacity 
+                style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#eef2ff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 4 }}
+                onPress={() => setShowYearPicker(true)}
+              >
+                <Text style={{ color: '#6366f1', fontWeight: '600', fontSize: 16, marginRight: 4 }}>{selectedYear}</Text>
+                <Ionicons name="chevron-down" size={16} color="#6366f1" />
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={styles.yearSelectorRow}>
-            <Text style={styles.yearSelectorLabel}>Showing data for</Text>
-            <TouchableOpacity 
-              style={styles.yearSelectorButton}
-              onPress={() => setShowYearPicker(true)}
-            >
-              <Text style={styles.yearSelectorText}>{selectedYear}</Text>
-              <Ionicons name="chevron-down" size={16} color="#6366f1" />
-            </TouchableOpacity>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 0, marginBottom: 16, paddingHorizontal: 8 }}>
+            <View style={{ width: '48%' }}>
+              <StatCard label="Total Expenses" amount={totals.expenses} />
+            </View>
+            <View style={{ width: '48%' }}>
+              <StatCard label="Lent" amount={pendingLent} />
+            </View>
+            <View style={{ width: '48%', marginTop: 16 }}>
+              <StatCard label="Borrowed" amount={totals.borrowed} />
+            </View>
+            <View style={{ width: '48%', marginTop: 16 }}>
+              <StatCard label="Investments" amount={investmentTotal} />
+            </View>
           </View>
-        </View>
-
-        <StatCard label="Total Expenses" amount={totals.expenses} />
-        <StatCard label="Lent" amount={pendingLent} />
-        <StatCard label="Borrowed" amount={totals.borrowed} />
-        <StatCard label="Investments" amount={investmentTotal} />
-
-        {/* <View style={styles.navSection}>
-          <NavButton icon="wallet" label="Add Expense" onPress={() => router.push('/expense')} />
-          <NavButton icon="swap-horizontal" label="Lend / Borrow" onPress={() => router.push('/lending')} />
-          <NavButton icon="bar-chart" label="Investments" onPress={() => router.push('/investments')} />
-          <NavButton icon="return-down-forward" label="Repayments" onPress={() => router.push('/repayments')} />
-          <NavButton icon="settings" label="Settings" onPress={() => router.push('/settings')} />
-        </View> */}
-
-        <YearSelector />
-      </ScrollView>
-      <BottomNavBar />
+          <YearSelector />
+        </ScrollView>
+        <BottomNavBar />
+      </LinearGradient>
     </>
   );
 }
