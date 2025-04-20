@@ -165,7 +165,6 @@ export default function Settings() {
             )}
           </View>
 
-          <Text style={styles.sectionHeader}>Account</Text>
           <View style={styles.card}>
             <TouchableOpacity 
               style={styles.actionButton}
@@ -198,7 +197,6 @@ export default function Settings() {
             </View>
           </View>
 
-          <Text style={styles.sectionHeader}>Quick Tips</Text>
           <View style={[styles.card, {paddingHorizontal: 20, paddingVertical: 18, marginBottom: 32, backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe'}]}>
             <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 8}}>
               <Ionicons name="bulb-outline" size={22} color="#6366f1" style={{marginRight: 8}} />
