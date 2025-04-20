@@ -172,7 +172,7 @@ const ExpenseAnalysis = () => {
                 data={{
                   labels: yearlyTotalsArr.map(y => y.year),
                   datasets: [
-                    { data: yearlyTotalsArr.map(y => Number(y.total.toFixed(2))) }
+                    { data: yearlyTotalsArr.map(y => Number(y.total || 0)) }
                   ]
                 }}
                 width={Math.max(yearlyTotalsArr.length * 60, 260)}

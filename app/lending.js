@@ -15,7 +15,7 @@ function AddLoanForm({ onClose, onAdded }) {
   const [loanType, setLoanType] = useState('given');
   const [form, setForm] = useState({
     amount: '',
-    contact: '',
+    lender: '', // changed from contact
     description: '',
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
@@ -26,8 +26,8 @@ function AddLoanForm({ onClose, onAdded }) {
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = async () => {
-    if (!form.amount || !form.contact) {
-      Alert.alert('Validation Error', 'Amount and Contact are required fields.');
+    if (!form.amount || !form.lender) {
+      Alert.alert('Validation Error', 'Amount and Lender are required fields.');
       return;
     }
     const user = auth.currentUser;
@@ -35,19 +35,47 @@ function AddLoanForm({ onClose, onAdded }) {
       Alert.alert('Error', 'You must be logged in to save a loan.');
       return;
     }
-    const loanData = { ...form, loanType };
+    const loanData = { ...form, contact: form.lender, loanType };
     const success = await saveLoanToFirestore(loanData);
     if (success) {
       Alert.alert('Success', 'Loan details saved successfully!');
       setForm({
         amount: '',
-        contact: '',
+        lender: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
         dueDate: new Date().toISOString().split('T')[0],
       });
       onClose();
       if (onAdded) onAdded();
+    }
+  };
+
+  // Contact selection function
+  const selectContact = async () => {
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status === 'granted') {
+        const { data } = await Contacts.getContactsAsync({
+          fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+          sort: Contacts.SortTypes.FirstName,
+        });
+        if (data.length > 0) {
+          const contactOptions = data.map(contact => ({
+            text: contact.name,
+            onPress: () => handleChange('lender', contact.name)
+          }));
+          contactOptions.push({ text: 'Cancel', style: 'cancel' });
+          Alert.alert('Select Lender', 'Choose a lender:', contactOptions);
+        } else {
+          Alert.alert('No Contacts', 'No contacts found on your device.');
+        }
+      } else {
+        Alert.alert('Permission Denied', 'Please allow access to your contacts to use this feature.');
+      }
+    } catch (error) {
+      console.error('Error accessing contacts:', error);
+      Alert.alert('Error', 'Failed to access contacts.');
     }
   };
 
@@ -81,14 +109,19 @@ function AddLoanForm({ onClose, onAdded }) {
         onChangeText={(text) => handleChange('amount', text)}
         placeholderTextColor="#b6c3e0"
       />
-      <Text style={{ marginBottom: 8, fontSize: 18, color: '#6366f1', fontWeight: '600' }}>Contact</Text>
-      <TextInput
-        style={{ borderWidth: 1, borderColor: '#6366f1', borderRadius: 10, padding: 10, fontSize: 18, color: '#222', backgroundColor: '#F8FAFF', marginBottom: 18 }}
-        placeholder="Enter contact name"
-        value={form.contact}
-        onChangeText={(text) => handleChange('contact', text)}
-        placeholderTextColor="#b6c3e0"
-      />
+      <Text style={{ marginBottom: 8, fontSize: 18, color: '#6366f1', fontWeight: '600' }}>Lender</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
+        <TextInput
+          style={{ flex: 1, borderWidth: 1, borderColor: '#6366f1', borderRadius: 10, padding: 10, fontSize: 18, color: '#222', backgroundColor: '#F8FAFF' }}
+          placeholder="Enter lender's name"
+          value={form.lender}
+          onChangeText={(text) => handleChange('lender', text)}
+          placeholderTextColor="#b6c3e0"
+        />
+        <TouchableOpacity onPress={selectContact} style={{ marginLeft: 10 }}>
+          <Ionicons name="person-circle-outline" size={28} color="#6366f1" />
+        </TouchableOpacity>
+      </View>
       <Text style={{ marginBottom: 8, fontSize: 18, color: '#6366f1', fontWeight: '600' }}>Description (Optional)</Text>
       <TextInput
         style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, fontSize: 16, color: '#444', backgroundColor: '#F8FAFF', marginBottom: 18 }}
@@ -159,7 +192,7 @@ export default function Lending() {
   const [loanType, setLoanType] = useState('given'); // 'given' or 'taken'
   const [form, setForm] = useState({
     amount: '',
-    contact: '',
+    lender: '', // changed from contact
     description: '',
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
@@ -185,22 +218,12 @@ export default function Lending() {
           sort: Contacts.SortTypes.FirstName,
         });
         if (data.length > 0) {
-          // Show contact picker with phone numbers
-          const contactOptions = data.flatMap(contact => {
-            if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
-              return contact.phoneNumbers.map(phone => ({
-                text: `${contact.name} (${phone.number})`,
-                onPress: () => handleChange('contact', `${contact.name} (${phone.number})`)
-              }));
-            } else {
-              return [{
-                text: `${contact.name} (No number)`,
-                onPress: () => handleChange('contact', `${contact.name}`)
-              }];
-            }
-          });
+          const contactOptions = data.map(contact => ({
+            text: contact.name,
+            onPress: () => handleChange('lender', contact.name)
+          }));
           contactOptions.push({ text: 'Cancel', style: 'cancel' });
-          Alert.alert('Select Contact', 'Choose a contact:', contactOptions);
+          Alert.alert('Select Lender', 'Choose a lender:', contactOptions);
         } else {
           Alert.alert('No Contacts', 'No contacts found on your device.');
         }
@@ -336,9 +359,9 @@ export default function Lending() {
       Alert.alert('Validation Error', 'Amount is a required field.');
       return;
     }
-    if (!form.contact) {
-      console.log('Validation failed: contact is empty');
-      Alert.alert('Validation Error', 'Contact is a required field.');
+    if (!form.lender) {
+      console.log('Validation failed: lender is empty');
+      Alert.alert('Validation Error', 'Lender is a required field.');
       return;
     }
     const user = auth.currentUser;
@@ -347,14 +370,14 @@ export default function Lending() {
       Alert.alert('Error', 'You must be logged in to save a loan.');
       return;
     }
-    const loanData = { ...form, loanType };
+    const loanData = { ...form, contact: form.lender, loanType };
     console.log('Attempting to save loan:', loanData);
     const success = await saveLoanToFirestore(loanData);
     if (success) {
       Alert.alert('Success', 'Loan details saved successfully!');
       setForm({
         amount: '',
-        contact: '',
+        lender: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
         dueDate: new Date().toISOString().split('T')[0],

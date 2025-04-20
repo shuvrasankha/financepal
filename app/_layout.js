@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Alert } from 'react-native';
 import { Stack } from 'expo-router';
 import { auth } from '../firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,14 @@ export default function RootLayout() {
     const checkLock = async () => {
       const lockEnabled = await AsyncStorage.getItem('appLockEnabled');
       if (lockEnabled === 'true') {
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        if (!compatible || !enrolled) {
+          Alert.alert('App Lock Disabled', 'No biometrics or PIN set up on this device.');
+          await AsyncStorage.setItem('appLockEnabled', 'false');
+          setLocked(false);
+          return;
+        }
         const result = await LocalAuthentication.authenticateAsync({
           promptMessage: 'Unlock FinancePal',
           fallbackLabel: 'Enter device PIN',
