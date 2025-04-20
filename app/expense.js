@@ -81,6 +81,12 @@ const Expense = () => {
   // Add state for input highlighting
   const [inputHighlight, setInputHighlight] = useState({ amount: false, category: false });
 
+  const [pageSize] = useState(10); // Number of items per page
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [allExpenses, setAllExpenses] = useState([]); // Store all expenses
+  const [paginatedExpenses, setPaginatedExpenses] = useState([]); // Store paginated expenses
+
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -113,6 +119,26 @@ const Expense = () => {
     }
   }, [viewDate, userId, showMonthView, viewMonth, viewYear]);
 
+  useEffect(() => {
+    if (showMonthView) {
+      updatePaginatedExpenses(monthlyExpenses);
+    } else {
+      updatePaginatedExpenses(expenses);
+    }
+  }, [currentPage, showMonthView, expenses, monthlyExpenses]);
+
+  const updatePaginatedExpenses = (expenseList) => {
+    const startIndex = 0;
+    const endIndex = currentPage * pageSize;
+    const paginatedData = expenseList.slice(startIndex, endIndex);
+    setPaginatedExpenses(paginatedData);
+    setHasMore(endIndex < expenseList.length);
+  };
+
+  const loadMore = () => {
+    setCurrentPage(prev => prev + 1);
+  };
+
   const fetchExpenses = async () => {
     try {
       const currentUser = auth.currentUser;
@@ -139,6 +165,8 @@ const Expense = () => {
 
       console.log('Fetched expenses:', expenseData);
       setExpenses(expenseData);
+      setCurrentPage(1); // Reset pagination when new data is fetched
+      updatePaginatedExpenses(expenseData);
     } catch (error) {
       console.error('Error fetching expenses:', error.message);
       Alert.alert('Error', 'Failed to fetch expenses. Please try again.');
@@ -185,6 +213,8 @@ const Expense = () => {
       
       console.log('Fetched monthly expenses:', monthlyExpenseData);
       setMonthlyExpenses(monthlyExpenseData);
+      setCurrentPage(1); // Reset pagination when new data is fetched
+      updatePaginatedExpenses(monthlyExpenseData);
       
       // Calculate total
       const total = monthlyExpenseData.reduce((sum, expense) => sum + expense.amount, 0);
@@ -512,104 +542,121 @@ const Expense = () => {
                 : `Expenses for ${viewDate.toLocaleDateString()}`}
             </Text>
             
-            {expenses.length === 0 ? (
+            {paginatedExpenses.length === 0 ? (
               <View style={styles.noExpensesContainer}>
                 <Ionicons name="receipt-outline" size={48} color="#d1d5db" />
                 <Text style={styles.noExpensesText}>No expenses found for this date.</Text>
               </View>
             ) : (
-              <FlatList
-                data={expenses}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: '#fff',
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 14,
-                    shadowColor: '#6366f1',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 8,
-                    elevation: 2,
-                  }}>
-                    {/* Category Icon */}
+              <>
+                <FlatList
+                  data={paginatedExpenses}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
                     <View style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 12,
-                      backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                      flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 14,
+                      backgroundColor: '#fff',
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 14,
+                      shadowColor: '#6366f1',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.08,
+                      shadowRadius: 8,
+                      elevation: 2,
                     }}>
-                      <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
-                    </View>
-                    {/* Main Info */}
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
-                        <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '600', backgroundColor: '#f3f4f6', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 8 }}>{item.category}</Text>
+                      {/* Category Icon */}
+                      <View style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 14,
+                      }}>
+                        <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
                       </View>
-                      {item.note ? (
-                        <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
-                      ) : null}
-                      <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{new Date(item.date).toLocaleDateString()}</Text>
+                      {/* Main Info */}
+                      <View style={{ flex: 1, justifyContent: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                        </View>
+                        {item.note ? (
+                          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+                        ) : null}
+                      </View>
+                      {/* Actions */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: 10,
+                            width: 36,
+                            height: 36,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: '#6366f1',
+                            shadowColor: '#6366f1',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.08,
+                            shadowRadius: 2,
+                            elevation: 2,
+                          }}
+                          onPress={() => handleUpdate(item)}
+                          accessible={true}
+                          accessibilityLabel="Edit expense"
+                        >
+                          <Ionicons name="pencil" size={18} color="#6366f1" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#fef2f2',
+                            borderRadius: 10,
+                            width: 36,
+                            height: 36,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: '#ef4444',
+                            shadowColor: '#ef4444',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.08,
+                            shadowRadius: 2,
+                            elevation: 2,
+                          }}
+                          onPress={() => deleteExpense(item.id)}
+                          accessible={true}
+                          accessibilityLabel="Delete expense"
+                        >
+                          <Ionicons name="trash" size={18} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    {/* Actions */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: '#f3f4f6',
-                          borderRadius: 10,
-                          width: 36,
-                          height: 36,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          borderWidth: 1,
-                          borderColor: '#6366f1',
-                          shadowColor: '#6366f1',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.08,
-                          shadowRadius: 2,
-                          elevation: 2,
-                        }}
-                        onPress={() => handleUpdate(item)}
-                        accessible={true}
-                        accessibilityLabel="Edit expense"
-                      >
-                        <Ionicons name="pencil" size={18} color="#6366f1" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: '#fef2f2',
-                          borderRadius: 10,
-                          width: 36,
-                          height: 36,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          borderWidth: 1,
-                          borderColor: '#ef4444',
-                          shadowColor: '#ef4444',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.08,
-                          shadowRadius: 2,
-                          elevation: 2,
-                        }}
-                        onPress={() => deleteExpense(item.id)}
-                        accessible={true}
-                        accessibilityLabel="Delete expense"
-                      >
-                        <Ionicons name="trash" size={18} color="#ef4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-                scrollEnabled={false}
-                style={styles.expensesList}
-              />
+                  )}
+                  scrollEnabled={true}
+                  style={styles.expensesList}
+                  ListFooterComponent={() => hasMore && (
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: '#f3f4f6',
+                        padding: 12,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        marginVertical: 16,
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                      }}
+                      onPress={loadMore}
+                    >
+                      <Text style={{ color: '#6366f1', fontSize: 16, fontWeight: '600', marginRight: 8 }}>Load More</Text>
+                      <Ionicons name="chevron-down" size={20} color="#6366f1" />
+                    </TouchableOpacity>
+                  )}
+                />
+              </>
             )}
           </>
         ) : (
@@ -632,7 +679,6 @@ const Expense = () => {
             {/* Monthly Summary Card */}
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>Monthly Summary</Text>
-              <Text style={styles.summaryTotal}>Total: ₹{monthlyTotal.toFixed(2)}</Text>
               
               <View style={styles.divider} />
               
@@ -647,104 +693,122 @@ const Expense = () => {
             </View>
             
             <Text style={styles.expensesTitle}>All Expenses This Month</Text>
-            {monthlyExpenses.length === 0 ? (
+            {paginatedExpenses.length === 0 ? (
               <View style={styles.noExpensesContainer}>
                 <Ionicons name="receipt-outline" size={48} color="#d1d5db" />
                 <Text style={styles.noExpensesText}>No expenses found for this month.</Text>
               </View>
             ) : (
-              <FlatList
-                data={monthlyExpenses}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    backgroundColor: '#fff',
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 14,
-                    shadowColor: '#6366f1',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 8,
-                    elevation: 2,
-                  }}>
-                    {/* Category Icon */}
+              <>
+                <FlatList
+                  data={paginatedExpenses}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
                     <View style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 12,
-                      backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                      flexDirection: 'row',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 14,
+                      backgroundColor: '#fff',
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 14,
+                      shadowColor: '#6366f1',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.08,
+                      shadowRadius: 8,
+                      elevation: 2,
                     }}>
-                      <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
-                    </View>
-                    {/* Main Info */}
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
-                        <Text style={{ fontSize: 13, color: '#6b7280', fontWeight: '600', backgroundColor: '#f3f4f6', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 8 }}>{item.category}</Text>
+                      {/* Category Icon */}
+                      <View style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        backgroundColor: CATEGORY_COLORS[item.category] || '#e5e7eb',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 14,
+                      }}>
+                        <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
                       </View>
-                      {item.note ? (
-                        <Text style={{ fontSize: 13, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
-                      ) : null}
-                      <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>{new Date(item.date).toLocaleDateString()}</Text>
+                      {/* Main Info */}
+                      <View style={{ flex: 1, justifyContent: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1f2937' }}>₹{item.amount.toFixed(2)}</Text>
+                        </View>
+                        {item.note ? (
+                          <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+                        ) : null}
+                        
+                      </View>
+                      {/* Actions */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#f3f4f6',
+                            borderRadius: 10,
+                            width: 36,
+                            height: 36,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: '#6366f1',
+                            shadowColor: '#6366f1',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.08,
+                            shadowRadius: 2,
+                            elevation: 2,
+                          }}
+                          onPress={() => handleUpdate(item)}
+                          accessible={true}
+                          accessibilityLabel="Edit expense"
+                        >
+                          <Ionicons name="pencil" size={18} color="#6366f1" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: '#fef2f2',
+                            borderRadius: 10,
+                            width: 36,
+                            height: 36,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: '#ef4444',
+                            shadowColor: '#ef4444',
+                            shadowOffset: { width: 0, height: 1 },
+                            shadowOpacity: 0.08,
+                            shadowRadius: 2,
+                            elevation: 2,
+                          }}
+                          onPress={() => deleteExpense(item.id)}
+                          accessible={true}
+                          accessibilityLabel="Delete expense"
+                        >
+                          <Ionicons name="trash" size={18} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    {/* Actions */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, gap: 8 }}>
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: '#f3f4f6',
-                          borderRadius: 10,
-                          width: 36,
-                          height: 36,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          borderWidth: 1,
-                          borderColor: '#6366f1',
-                          shadowColor: '#6366f1',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.08,
-                          shadowRadius: 2,
-                          elevation: 2,
-                        }}
-                        onPress={() => handleUpdate(item)}
-                        accessible={true}
-                        accessibilityLabel="Edit expense"
-                      >
-                        <Ionicons name="pencil" size={18} color="#6366f1" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: '#fef2f2',
-                          borderRadius: 10,
-                          width: 36,
-                          height: 36,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          borderWidth: 1,
-                          borderColor: '#ef4444',
-                          shadowColor: '#ef4444',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.08,
-                          shadowRadius: 2,
-                          elevation: 2,
-                        }}
-                        onPress={() => deleteExpense(item.id)}
-                        accessible={true}
-                        accessibilityLabel="Delete expense"
-                      >
-                        <Ionicons name="trash" size={18} color="#ef4444" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-                scrollEnabled={false}
-                style={styles.expensesList}
-              />
+                  )}
+                  scrollEnabled={true}
+                  style={styles.expensesList}
+                  ListFooterComponent={() => hasMore && (
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: '#f3f4f6',
+                        padding: 12,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        marginVertical: 16,
+                        flexDirection: 'row',
+                        justifyContent: 'center',
+                      }}
+                      onPress={loadMore}
+                    >
+                      <Text style={{ color: '#6366f1', fontSize: 16, fontWeight: '600', marginRight: 8 }}>Load More</Text>
+                      <Ionicons name="chevron-down" size={20} color="#6366f1" />
+                    </TouchableOpacity>
+                  )}
+                />
+              </>
             )}
           </>
         )}
