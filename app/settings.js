@@ -8,6 +8,7 @@ import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firesto
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as LocalAuthentication from 'expo-local-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/SettingsStyles';
 import BottomNavBar from './components/BottomNavBar';
 
@@ -42,11 +43,10 @@ export default function Settings() {
   }, [user]);
 
   useEffect(() => {
-    // Load lockEnabled from local storage
+    // Load lockEnabled from AsyncStorage
     (async () => {
-      const value = await LocalAuthentication.getEnrolledLevelAsync();
-      // Optionally, load from AsyncStorage if you want persistent toggle
-      // setLockEnabled(value === LocalAuthentication.SecurityLevel.BIOMETRIC);
+      const value = await AsyncStorage.getItem('appLockEnabled');
+      setLockEnabled(value === 'true');
     })();
   }, []);
 
@@ -65,7 +65,7 @@ export default function Settings() {
       }
     }
     setLockEnabled(value);
-    // Optionally, save to AsyncStorage for persistence
+    await AsyncStorage.setItem('appLockEnabled', value ? 'true' : 'false');
   };
 
   const handleLogout = async () => {
@@ -177,7 +177,7 @@ export default function Settings() {
               {exporting && <ActivityIndicator size="small" color="#6366f1" style={{ marginLeft: 8 }} />}
             </TouchableOpacity>
             <TouchableOpacity 
-              style={styles.actionButton}
+              style={[styles.actionButton, styles.lastActionButton]}
               onPress={handleLogout}
             >
               <Ionicons name="log-out-outline" size={22} color="#ef4444" />
@@ -187,7 +187,7 @@ export default function Settings() {
 
           <Text style={styles.sectionHeader}>Security</Text>
           <View style={styles.card}>
-            <View style={styles.actionButton}>
+            <View style={[styles.actionButton, styles.lastActionButton]}> 
               <Ionicons name="lock-closed-outline" size={22} color="#6366f1" />
               <Text style={styles.actionText}>App Lock</Text>
               <Switch
@@ -196,6 +196,17 @@ export default function Settings() {
                 onValueChange={handleToggleLock}
               />
             </View>
+          </View>
+
+          <Text style={styles.sectionHeader}>Quick Tips</Text>
+          <View style={[styles.card, {paddingHorizontal: 20, paddingVertical: 18, marginBottom: 32, backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe'}]}>
+            <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 8}}>
+              <Ionicons name="bulb-outline" size={22} color="#6366f1" style={{marginRight: 8}} />
+              <Text style={[styles.quickTipsTitle, {marginLeft: 0}]}>Quick Tips</Text>
+            </View>
+            <Text style={styles.quickTip}>• Tap on a card to add new entries or view details.</Text>
+            <Text style={styles.quickTip}>• Use the year selector to view your financial summary for previous years.</Text>
+            <Text style={styles.quickTip}>• Navigate using the bottom bar for Expenses, Analysis, and Settings.</Text>
           </View>
         </View>
       </ScrollView>

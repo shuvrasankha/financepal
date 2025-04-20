@@ -85,6 +85,7 @@ export default StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 24,
     paddingVertical: 8,
+    paddingHorizontal: 0,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -94,15 +95,32 @@ export default StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
+    backgroundColor: 'transparent',
+  },
+  lastActionButton: {
+    borderBottomWidth: 0,
   },
   actionText: {
     marginLeft: 12,
     fontSize: 16,
     color: '#1f2937',
     fontWeight: '500',
+  },
+  quickTipsTitle: {
+    fontSize: 15,
+    color: '#6366f1',
+    fontWeight: '700',
+    marginBottom: 4,
+    marginLeft: 4,
+  },
+  quickTip: {
+    color: '#6b7280',
+    fontSize: 14,
+    marginBottom: 2,
+    marginLeft: 4,
   },
 });
