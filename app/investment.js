@@ -70,7 +70,27 @@ function AddInvestmentForm({ onClose, onAdded }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 18, marginTop:46 }}>Add Investment</Text>
+      {/* Header with Cancel Button */}
+      <View style={{ 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: 24,
+        marginTop: 46
+      }}>
+        <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Add Investment</Text>
+        <TouchableOpacity
+          onPress={onClose}
+          style={{
+            padding: 8,
+            borderRadius: 8,
+            backgroundColor: '#fee2e2'
+          }}
+        >
+          <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+        </TouchableOpacity>
+      </View>
+
       <Text style={{ marginBottom: 8, fontSize: 18 }}>Amount</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
         <TextInput
@@ -164,14 +184,21 @@ function AddInvestmentForm({ onClose, onAdded }) {
         onChangeText={text => handleChange('note', text)}
         placeholder="Any note..."
       />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: '#6366f1', padding: 16, borderRadius: 8, alignItems: 'center', marginRight: 10, flexDirection: 'row', justifyContent: 'center' }} onPress={handleSubmit}>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
+        <TouchableOpacity 
+          style={{ 
+            flex: 1, 
+            backgroundColor: '#6366f1', 
+            padding: 16, 
+            borderRadius: 8, 
+            alignItems: 'center', 
+            flexDirection: 'row', 
+            justifyContent: 'center' 
+          }} 
+          onPress={handleSubmit}
+        >
           <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>Save</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onClose} style={{ flex: 1, backgroundColor: '#fee2e2', padding: 16, borderRadius: 8, alignItems: 'center', marginLeft: 10, flexDirection: 'row', justifyContent: 'center' }}>
-          <Ionicons name="close-circle-outline" size={22} color="#ef4444" style={{ marginRight: 8 }} />
-          <Text style={{ color: '#ef4444', fontWeight: 'bold', fontSize: 18 }}>Cancel</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -309,6 +336,10 @@ export default function Investment() {
           chartConfig={{
             color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
             propsForLabels: { numberOfLines: 2, fontSize: 13 },
+            propsForBackgroundLines: {},
+            propsForDots: {},
+            decimalPlaces: 0,
+            percentage: true,
           }}
           accessor="population"
           backgroundColor="transparent"
@@ -318,18 +349,6 @@ export default function Investment() {
           avoidFalseZero
           showValuesOnAbsolute={false}
           center={[0, 0]}
-          // Show percentage values
-          chartConfig={{
-            ...{
-              color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-              propsForLabels: { numberOfLines: 2, fontSize: 13 },
-            },
-            propsForBackgroundLines: {},
-            propsForDots: {},
-            propsForLabels: { fontSize: 13 },
-            decimalPlaces: 0,
-            percentage: true,
-          }}
         />
         {/* Toggleable Line Graph for Each Asset Type */}
         <Text style={styles.sectionTitle}>Asset Type Trend</Text>
