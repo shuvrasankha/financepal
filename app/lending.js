@@ -15,7 +15,8 @@ function AddLoanForm({ onClose, onAdded }) {
   const [loanType, setLoanType] = useState('given');
   const [form, setForm] = useState({
     amount: '',
-    lender: '', // changed from contact
+    lender: '',
+    lenderNumber: '', // added for phone number
     description: '',
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
@@ -42,6 +43,7 @@ function AddLoanForm({ onClose, onAdded }) {
       setForm({
         amount: '',
         lender: '',
+        lenderNumber: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
         dueDate: new Date().toISOString().split('T')[0],
@@ -61,10 +63,18 @@ function AddLoanForm({ onClose, onAdded }) {
           sort: Contacts.SortTypes.FirstName,
         });
         if (data.length > 0) {
-          const contactOptions = data.map(contact => ({
-            text: contact.name,
-            onPress: () => handleChange('lender', contact.name)
-          }));
+          const contactOptions = data
+            .filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0)
+            .map(contact => {
+              const number = contact.phoneNumbers[0]?.number || '';
+              return {
+                text: `${contact.name} (${number})`,
+                onPress: () => {
+                  handleChange('lender', contact.name);
+                  handleChange('lenderNumber', number);
+                },
+              };
+            });
           contactOptions.push({ text: 'Cancel', style: 'cancel' });
           Alert.alert('Select Lender', 'Choose a lender:', contactOptions);
         } else {
@@ -80,7 +90,14 @@ function AddLoanForm({ onClose, onAdded }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
+    <View style={{ flex: 1, backgroundColor: '#fff', padding: 24, paddingTop: 46 }}>
+      <TouchableOpacity
+        onPress={onClose}
+        style={{ position: 'absolute', top: 40, right: 18, zIndex: 10, padding: 6 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="close-circle" size={32} color="#ef4444" />
+      </TouchableOpacity>
       <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 18, color: '#111' }}>Add Loan</Text>
       <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 24, gap: 12 }}>
         <TouchableOpacity
@@ -122,6 +139,14 @@ function AddLoanForm({ onClose, onAdded }) {
           <Ionicons name="person-circle-outline" size={28} color="#6366f1" />
         </TouchableOpacity>
       </View>
+      <TextInput
+        style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, fontSize: 16, color: '#444', backgroundColor: '#F8FAFF', marginBottom: 18 }}
+        placeholder="Phone number (auto-filled if contact selected)"
+        value={form.lenderNumber}
+        onChangeText={(text) => handleChange('lenderNumber', text)}
+        placeholderTextColor="#b6c3e0"
+        keyboardType="phone-pad"
+      />
       <Text style={{ marginBottom: 8, fontSize: 18, color: '#6366f1', fontWeight: '600' }}>Description (Optional)</Text>
       <TextInput
         style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, fontSize: 16, color: '#444', backgroundColor: '#F8FAFF', marginBottom: 18 }}
@@ -179,10 +204,6 @@ function AddLoanForm({ onClose, onAdded }) {
           <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>Save</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onClose} style={{ flex: 1, backgroundColor: '#fee2e2', padding: 16, borderRadius: 8, alignItems: 'center', marginLeft: 10, flexDirection: 'row', justifyContent: 'center' }}>
-          <Ionicons name="close-circle-outline" size={22} color="#ef4444" style={{ marginRight: 8 }} />
-          <Text style={{ color: '#ef4444', fontWeight: 'bold', fontSize: 18 }}>Cancel</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -192,7 +213,8 @@ export default function Lending() {
   const [loanType, setLoanType] = useState('given'); // 'given' or 'taken'
   const [form, setForm] = useState({
     amount: '',
-    lender: '', // changed from contact
+    lender: '',
+    lenderNumber: '', // added for phone number
     description: '',
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
@@ -218,10 +240,18 @@ export default function Lending() {
           sort: Contacts.SortTypes.FirstName,
         });
         if (data.length > 0) {
-          const contactOptions = data.map(contact => ({
-            text: contact.name,
-            onPress: () => handleChange('lender', contact.name)
-          }));
+          const contactOptions = data
+            .filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0)
+            .map(contact => {
+              const number = contact.phoneNumbers[0]?.number || '';
+              return {
+                text: `${contact.name} (${number})`,
+                onPress: () => {
+                  handleChange('lender', contact.name);
+                  handleChange('lenderNumber', number);
+                },
+              };
+            });
           contactOptions.push({ text: 'Cancel', style: 'cancel' });
           Alert.alert('Select Lender', 'Choose a lender:', contactOptions);
         } else {
@@ -378,6 +408,7 @@ export default function Lending() {
       setForm({
         amount: '',
         lender: '',
+        lenderNumber: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
         dueDate: new Date().toISOString().split('T')[0],
