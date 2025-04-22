@@ -1,17 +1,28 @@
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, useColorScheme } from 'react-native';
 import { StyleSheet } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Theme from '../constants/Theme';
+import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
+import { ExpenseProvider } from '../contexts/ExpenseContext';
+import { ErrorProvider } from '../contexts/ErrorContext';
+import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-export default function RootLayout() {
+// Wrap the Stack with ThemeContext
+function AppNavigator() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
+  const { isDarkMode } = useTheme();
+  
+  // Get theme-specific colors and styles
+  const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
 
   useEffect(() => {
     // Check authentication state
@@ -52,93 +63,112 @@ export default function RootLayout() {
 
   if (loading || locked) {
     return (
-      <View style={[styles.container, { backgroundColor: Theme.colors.primary }]}> 
+      <View style={[styles.container, { backgroundColor: colors.primary }]}> 
+        <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         <View style={{ alignItems: 'center' }}>
-          <View style={{ backgroundColor: Theme.colors.white, borderRadius: 60, padding: 18, marginBottom: 24 }}>
-            <Text style={{ fontSize: 40, color: Theme.colors.primary, fontWeight: 'bold' }}>🔒</Text>
+          <View style={{ backgroundColor: colors.white, borderRadius: 60, padding: 18, marginBottom: 24 }}>
+            <Text style={{ fontSize: 40, color: colors.primary, fontWeight: 'bold' }}>🔒</Text>
           </View>
-          <Text style={{ fontSize: 28, color: Theme.colors.white, fontWeight: '700', marginBottom: 8 }}>App Locked</Text>
-          <Text style={{ color: Theme.colors.primaryLight, fontSize: 16, marginBottom: 24, textAlign: 'center', maxWidth: 260 }}>
+          <Text style={{ fontSize: 28, color: colors.dark, fontWeight: '700', marginBottom: 8 }}>App Locked</Text>
+          <Text style={{ color: isDarkMode ? colors.medium : colors.primaryLight, fontSize: 16, marginBottom: 24, textAlign: 'center', maxWidth: 260 }}>
             For your security, please authenticate to continue using FinancePal.
           </Text>
-          <ActivityIndicator size="large" color={Theme.colors.white} />
+          <ActivityIndicator size="large" color={colors.dark} />
         </View>
       </View>
     );
   }
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        headerStyle: {
-          backgroundColor: Theme.colors.background,
-        },
-        headerShadowVisible: false,
-        headerBackTitle: 'Back',
-        headerTintColor: Theme.colors.primary,
-        contentStyle: {
-          backgroundColor: Theme.colors.background
-        }
-      }}
-    >
-      <Stack.Screen
-        name="index"
-        options={{
-          title: 'Dashboard',
-        }}
-      />
-      <Stack.Screen
-        name="expense"
-        options={{
-          title: 'Expenses',
-        }}
-      />
-      <Stack.Screen
-        name="expenseAnalysis"
-        options={{
-          title: 'Expense Analysis',
-        }}
-      />
-      <Stack.Screen
-        name="login"
-        options={{
-          title: 'Login',
+    <>
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
           headerShown: false,
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerShadowVisible: false,
+          headerBackTitle: 'Back',
+          headerTintColor: colors.primary,
+          contentStyle: {
+            backgroundColor: colors.background
+          }
         }}
-      />
-      <Stack.Screen
-        name="signup"
-        options={{
-          title: 'Sign Up',
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="borrowing"
-        options={{
-          title: 'Borrowing',
-        }}
-      />
-      <Stack.Screen
-        name="investment"
-        options={{
-          title: 'Investment',
-        }}
-      />
-      <Stack.Screen
-        name="lending"
-        options={{
-          title: 'Lending',
-        }}
-      />
-      <Stack.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-        }}
-      />
-    </Stack>
+      >
+        <Stack.Screen
+          name="index"
+          options={{
+            title: 'Dashboard',
+          }}
+        />
+        <Stack.Screen
+          name="expense"
+          options={{
+            title: 'Expenses',
+          }}
+        />
+        <Stack.Screen
+          name="expenseAnalysis"
+          options={{
+            title: 'Expense Analysis',
+          }}
+        />
+        <Stack.Screen
+          name="login"
+          options={{
+            title: 'Login',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="signup"
+          options={{
+            title: 'Sign Up',
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="borrowing"
+          options={{
+            title: 'Borrowing',
+          }}
+        />
+        <Stack.Screen
+          name="investment"
+          options={{
+            title: 'Investment',
+          }}
+        />
+        <Stack.Screen
+          name="lending"
+          options={{
+            title: 'Lending',
+          }}
+        />
+        <Stack.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+          }}
+        />
+      </Stack>
+    </>
+  );
+}
+
+// Root component that provides all context providers
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <ErrorProvider>
+          <ExpenseProvider>
+            <AppNavigator />
+          </ExpenseProvider>
+        </ErrorProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

@@ -13,6 +13,10 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from './components/BottomNavBar';
+import LoadingState from './components/LoadingState';
+import { useTheme } from '../contexts/ThemeContext';
+import { useError } from '../contexts/ErrorContext';
+import Theme from '../constants/Theme';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -33,6 +37,9 @@ const ExpenseAnalysis = () => {
       categories: {}
     }
   });
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  const { setError } = useError();
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -62,6 +69,7 @@ const ExpenseAnalysis = () => {
         processData(data);
       } catch (e) {
         console.error('Error fetching expenses:', e);
+        setError('Failed to load expense analysis. Please try again later.');
         resetData();
       } finally {
         setLoading(false);
@@ -69,7 +77,7 @@ const ExpenseAnalysis = () => {
     };
 
     fetchExpenses();
-  }, []);
+  }, [setError]);
 
   const resetData = () => {
     setSummaryData({
@@ -174,30 +182,47 @@ const ExpenseAnalysis = () => {
         percentage: (amount / (viewMode === 'monthly' ? summaryData.monthly.total : summaryData.yearly.total) * 100)
       }));
 
-    return sortedCategories.map((item, index) => (
-      <View key={item.category} style={styles.categoryItem}>
-        <View style={styles.categoryHeader}>
-          <View style={[styles.categoryIcon, { backgroundColor: `${chartColors[index % chartColors.length]}22` }]}>
-            <Ionicons 
-              name={getCategoryIcon(item.category)} 
-              size={20} 
-              color={chartColors[index % chartColors.length]} 
-            />
+    return sortedCategories.map((item, index) => {
+      // Enhance color opacity in dark mode for better visibility
+      const iconBgOpacity = isDarkMode ? '33' : '22';
+      const color = chartColors[index % chartColors.length];
+      
+      return (
+        <View key={item.category} style={styles.categoryItem}>
+          <View style={styles.categoryHeader}>
+            <View style={[styles.categoryIcon, { backgroundColor: `${color}${iconBgOpacity}` }]}>
+              <Ionicons 
+                name={getCategoryIcon(item.category)} 
+                size={20} 
+                color={color} 
+              />
+            </View>
+            <View style={styles.categoryInfo}>
+              <Text style={[styles.categoryName, { 
+                color: colors.dark,
+                fontWeight: isDarkMode ? '600' : '500' // Bolder in dark mode for better visibility
+              }]}>{item.category}</Text>
+              <Text style={[styles.categoryAmount, { 
+                color: isDarkMode ? colors.white : colors.medium 
+              }]}>₹{new Intl.NumberFormat('en-IN').format(item.amount)}</Text>
+            </View>
+            <Text style={[styles.categoryPercentage, { 
+              color: isDarkMode ? '#e0e0e0' : colors.dark 
+            }]}>{item.percentage.toFixed(1)}%</Text>
           </View>
-          <View style={styles.categoryInfo}>
-            <Text style={styles.categoryName}>{item.category}</Text>
-            <Text style={styles.categoryAmount}>₹{new Intl.NumberFormat('en-IN').format(item.amount)}</Text>
+          <View style={[styles.percentageBar, { 
+            backgroundColor: isDarkMode ? colors.borderDark : colors.light
+          }]}>
+            <View style={[styles.percentageFill, { 
+              width: `${item.percentage}%`,
+              backgroundColor: color,
+              // Add minimum width for very small percentages
+              minWidth: 4
+            }]} />
           </View>
-          <Text style={styles.categoryPercentage}>{item.percentage.toFixed(1)}%</Text>
         </View>
-        <View style={styles.percentageBar}>
-          <View style={[styles.percentageFill, { 
-            width: `${item.percentage}%`,
-            backgroundColor: chartColors[index % chartColors.length]
-          }]} />
-        </View>
-      </View>
-    ));
+      );
+    });
   };
 
   const getCategoryIcon = (category) => {
@@ -225,6 +250,8 @@ const ExpenseAnalysis = () => {
       : summaryData.yearly.data.map(item => item.year);
 
     const maxValue = Math.max(...data);
+    // Set a higher contrast color for the bars in dark mode
+    const barColor = isDarkMode ? '#8a84ff' : colors.primary;
 
     return (
       <View style={styles.barChartContainer}>
@@ -234,12 +261,18 @@ const ExpenseAnalysis = () => {
               <View style={[
                 styles.bar, 
                 { 
-                  height: maxValue > 0 ? `${(value / maxValue * 100)}%` : 0,
-                  backgroundColor: '#6366f1'
+                  height: maxValue > 0 ? `${Math.max((value / maxValue * 100), 2)}%` : 2, // Minimum height of 2% for visibility
+                  backgroundColor: barColor,
+                  // Add a border in dark mode for better visibility
+                  borderWidth: isDarkMode ? 1 : 0,
+                  borderColor: isDarkMode ? '#a9a9ff' : 'transparent',
                 }
               ]} />
             </View>
-            <Text style={styles.barLabel}>{labels[index]}</Text>
+            <Text style={[styles.barLabel, { 
+              color: isDarkMode ? '#e0e0e0' : colors.medium,
+              fontWeight: isDarkMode ? '500' : '400'
+            }]}>{labels[index]}</Text>
           </View>
         ))}
       </View>
@@ -248,24 +281,38 @@ const ExpenseAnalysis = () => {
 
   return (
     <>
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Expense Analysis</Text>
-          <View style={styles.toggleContainer}>
+          <Text style={[styles.headerTitle, { color: colors.dark }]}>Expense Analysis</Text>
+          <View style={[styles.toggleContainer, { backgroundColor: colors.light }]}>
             <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'monthly' && styles.toggleButtonActive]}
+              style={[
+                styles.toggleButton, 
+                viewMode === 'monthly' && [styles.toggleButtonActive, { backgroundColor: colors.primary }]
+              ]}
               onPress={() => setViewMode('monthly')}
             >
-              <Text style={[styles.toggleButtonText, viewMode === 'monthly' && styles.toggleButtonTextActive]}>
+              <Text style={[
+                styles.toggleButtonText, 
+                { color: colors.medium },
+                viewMode === 'monthly' && [styles.toggleButtonTextActive, { color: colors.white }]
+              ]}>
                 Monthly
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.toggleButton, viewMode === 'yearly' && styles.toggleButtonActive]}
+              style={[
+                styles.toggleButton, 
+                viewMode === 'yearly' && [styles.toggleButtonActive, { backgroundColor: colors.primary }]
+              ]}
               onPress={() => setViewMode('yearly')}
             >
-              <Text style={[styles.toggleButtonText, viewMode === 'yearly' && styles.toggleButtonTextActive]}>
+              <Text style={[
+                styles.toggleButtonText, 
+                { color: colors.medium },
+                viewMode === 'yearly' && [styles.toggleButtonTextActive, { color: colors.white }]
+              ]}>
                 Yearly
               </Text>
             </TouchableOpacity>
@@ -273,16 +320,14 @@ const ExpenseAnalysis = () => {
         </View>
 
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#6366f1" />
-          </View>
+          <LoadingState type="skeleton" />
         ) : (
           <>
-            <View style={styles.summaryCard}>
-              <Text style={styles.cardLabel}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
+              <Text style={[styles.cardLabel, { color: colors.medium }]}>
                 {viewMode === 'monthly' ? 'Total Expenses This Year' : 'Total Expenses (5 Years)'}
               </Text>
-              <Text style={styles.totalAmount}>
+              <Text style={[styles.totalAmount, { color: colors.dark }]}>
                 ₹{new Intl.NumberFormat('en-IN').format(
                   viewMode === 'monthly' 
                     ? summaryData.monthly.total 
@@ -292,16 +337,20 @@ const ExpenseAnalysis = () => {
               {summaryData.monthly.monthlyChange !== null && viewMode === 'monthly' && (
                 <View style={[
                   styles.changeIndicator,
-                  { backgroundColor: summaryData.monthly.monthlyChange > 0 ? '#fef2f2' : '#f0fdf4' }
+                  { 
+                    backgroundColor: isDarkMode
+                      ? (summaryData.monthly.monthlyChange > 0 ? `${colors.error}20` : `${colors.success}20`)
+                      : (summaryData.monthly.monthlyChange > 0 ? '#fef2f2' : '#f0fdf4')
+                  }
                 ]}>
                   <Ionicons 
                     name={summaryData.monthly.monthlyChange > 0 ? 'trending-up' : 'trending-down'} 
                     size={20} 
-                    color={summaryData.monthly.monthlyChange > 0 ? '#ef4444' : '#22c55e'} 
+                    color={summaryData.monthly.monthlyChange > 0 ? colors.error : colors.success} 
                   />
                   <Text style={[
                     styles.changeText,
-                    { color: summaryData.monthly.monthlyChange > 0 ? '#ef4444' : '#22c55e' }
+                    { color: summaryData.monthly.monthlyChange > 0 ? colors.error : colors.success }
                   ]}>
                     {Math.abs(summaryData.monthly.monthlyChange).toFixed(1)}% 
                     {summaryData.monthly.monthlyChange > 0 ? ' increase' : ' decrease'} from last month
@@ -310,15 +359,15 @@ const ExpenseAnalysis = () => {
               )}
             </View>
 
-            <View style={styles.chartCard}>
-              <Text style={styles.cardLabel}>
+            <View style={[styles.chartCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
+              <Text style={[styles.cardLabel, { color: colors.medium }]}>
                 {viewMode === 'monthly' ? 'Monthly Spending Pattern' : 'Yearly Spending Trend'}
               </Text>
               {renderBarChart()}
             </View>
 
-            <View style={styles.categoriesCard}>
-              <Text style={styles.cardLabel}>Spending by Category</Text>
+            <View style={[styles.categoriesCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
+              <Text style={[styles.cardLabel, { color: colors.medium }]}>Spending by Category</Text>
               <View style={styles.categoriesList}>
                 {renderCategoryList(
                   viewMode === 'monthly' 
@@ -332,6 +381,8 @@ const ExpenseAnalysis = () => {
       </ScrollView>
     </SafeAreaView>
     <BottomNavBar />
+    {/* Add some empty space at the bottom for better scroll padding */}
+    <View style={{ height: 80 }} />
     </>
   );
 };
@@ -344,7 +395,6 @@ const chartColors = [
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb',
   },
   container: {
     flex: 1,
@@ -360,12 +410,10 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
     marginBottom: 16,
   },
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
     borderRadius: 12,
     padding: 4,
     alignSelf: 'flex-start',
@@ -376,15 +424,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   toggleButtonActive: {
-    backgroundColor: '#6366f1',
+    // Color will be applied dynamically
   },
   toggleButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#6b7280',
   },
   toggleButtonTextActive: {
-    color: '#ffffff',
+    // Color will be applied dynamically
   },
   loadingContainer: {
     flex: 1,
@@ -393,35 +440,29 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     margin: 16,
     padding: 20,
-    shadowColor: '#6366f1',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
   chartCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     margin: 16,
     marginTop: 0,
     padding: 20,
-    shadowColor: '#6366f1',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
   },
   categoriesCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     margin: 16,
     marginTop: 0,
     padding: 20,
-    shadowColor: '#6366f1',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -430,14 +471,12 @@ const styles = StyleSheet.create({
   },
   cardLabel: {
     fontSize: 15,
-    color: '#6b7280',
     marginBottom: 12,
     fontWeight: '500',
   },
   totalAmount: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#111827',
   },
   changeIndicator: {
     flexDirection: 'row',
@@ -469,13 +508,11 @@ const styles = StyleSheet.create({
   },
   bar: {
     width: '100%',
-    backgroundColor: '#6366f1',
     borderTopLeftRadius: 4,
     borderTopRightRadius: 4,
   },
   barLabel: {
     fontSize: 12,
-    color: '#6b7280',
     marginTop: 8,
   },
   categoriesList: {
@@ -503,21 +540,17 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
   },
   categoryAmount: {
     fontSize: 13,
-    color: '#6b7280',
     marginTop: 2,
   },
   categoryPercentage: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
   },
   percentageBar: {
     height: 4,
-    backgroundColor: '#f3f4f6',
     borderRadius: 2,
     overflow: 'hidden',
     marginLeft: 48,

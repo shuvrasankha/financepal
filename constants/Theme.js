@@ -1,30 +1,58 @@
 // A centralized theme file for consistent styling across the app
 const Theme = {
-  colors: {
-    // Primary brand colors
-    primary: '#4F46E5',       // Indigo 600 - main brand color
-    primaryLight: '#E0E7FF',  // Indigo 100 - light background
-    primaryDark: '#3730A3',   // Indigo 800 - darker variation
-    
-    // Accent colors
-    success: '#10B981',       // Emerald 500 - success actions/lent money
-    error: '#EF4444',         // Red 500 - errors/borrowed money
-    warning: '#F59E0B',       // Amber 500 - warnings/pending
-    info: '#3B82F6',          // Blue 500 - information/investments
+  light: {
+    colors: {
+      // Primary brand colors
+      primary: '#4F46E5',       // Indigo 600 - main brand color
+      primaryLight: '#E0E7FF',  // Indigo 100 - light background
+      primaryDark: '#3730A3',   // Indigo 800 - darker variation
+      
+      // Accent colors
+      success: '#10B981',       // Emerald 500 - success actions/lent money
+      error: '#EF4444',         // Red 500 - errors/borrowed money
+      warning: '#F59E0B',       // Amber 500 - warnings/pending
+      info: '#3B82F6',          // Blue 500 - information/investments
 
-    // Neutrals
-    dark: '#1F2937',          // Gray 800 - main text
-    medium: '#6B7280',        // Gray 500 - secondary text
-    light: '#E5E7EB',         // Gray 200 - borders
-    lighter: '#F3F4F6',       // Gray 100 - backgrounds
-    white: '#FFFFFF',         // White
-    
-    // Backgrounds
-    background: '#F9FAFB',    // Gray 50 - main background
-    card: '#FFFFFF',          // Card background
+      // Neutrals
+      dark: '#1F2937',          // Gray 800 - main text
+      medium: '#6B7280',        // Gray 500 - secondary text
+      light: '#E5E7EB',         // Gray 200 - borders
+      lighter: '#F3F4F6',       // Gray 100 - backgrounds
+      white: '#FFFFFF',         // White
+      
+      // Backgrounds
+      background: '#F9FAFB',    // Gray 50 - main background
+      card: '#FFFFFF',          // Card background
+    },
   },
   
-  // Typography
+  dark: {
+    colors: {
+      // Primary brand colors
+      primary: '#6366F1',       // Indigo 500 - slightly lighter for dark mode
+      primaryLight: '#312E81',  // Indigo 900 - darker in dark mode
+      primaryDark: '#818CF8',   // Indigo 400 - lighter for contrast
+      
+      // Accent colors
+      success: '#34D399',       // Emerald 400 - brighter for dark mode
+      error: '#F87171',         // Red 400 - brighter for dark mode
+      warning: '#FBBF24',       // Amber 400 - brighter for dark mode
+      info: '#60A5FA',          // Blue 400 - brighter for dark mode
+
+      // Neutrals
+      dark: '#F9FAFB',          // Gray 50 - inverted for dark mode
+      medium: '#D1D5DB',        // Gray 300 - lighter for dark mode
+      light: '#374151',         // Gray 700 - darker for dark mode
+      lighter: '#1F2937',       // Gray 800 - darker for dark mode
+      white: '#111827',         // Gray 900 - darkest background
+      
+      // Backgrounds
+      background: '#111827',    // Gray 900 - dark background
+      card: '#1F2937',          // Gray 800 - card background
+    },
+  },
+  
+  // Typography (shared between light and dark)
   typography: {
     fontSizes: {
       xs: 12,
@@ -43,7 +71,7 @@ const Theme = {
     }
   },
   
-  // Spacing
+  // Spacing (shared between light and dark)
   spacing: {
     xs: 4,
     sm: 8,
@@ -53,7 +81,7 @@ const Theme = {
     xxl: 48,
   },
   
-  // Border radii
+  // Border radii (shared between light and dark)
   borderRadius: {
     sm: 8,
     md: 12,
@@ -62,7 +90,7 @@ const Theme = {
     round: 9999, // Fully rounded (for circles)
   },
   
-  // Shadows
+  // Shadows - light mode
   shadows: {
     sm: {
       shadowColor: '#000',
@@ -87,58 +115,105 @@ const Theme = {
     },
   },
   
-  // Common styles for reuse
-  common: {
-    card: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 16,
-      padding: 16,
+  // Shadows - dark mode
+  shadowsDark: {
+    sm: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.3,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    md: {
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 6,
+      shadowOpacity: 0.4,
+      shadowRadius: 4,
       elevation: 3,
     },
-    button: {
-      primary: {
-        backgroundColor: '#4F46E5',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
-      secondary: {
-        backgroundColor: '#E0E7FF',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
-      outline: {
-        backgroundColor: 'transparent',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#4F46E5',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-      },
+    lg: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.5,
+      shadowRadius: 8,
+      elevation: 5,
     },
-    input: {
-      backgroundColor: '#F9FAFB',
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
-      borderRadius: 12,
-      padding: 14,
-      fontSize: 16,
-    }
+  },
+  
+  // Common styles for reuse - will be dynamically generated based on theme mode
+  getCommonStyles: (isDark) => {
+    const colors = isDark ? Theme.dark.colors : Theme.light.colors;
+    const shadows = isDark ? Theme.shadowsDark : Theme.shadows;
+    
+    return {
+      card: {
+        backgroundColor: colors.card,
+        borderRadius: 16,
+        padding: 16,
+        ...shadows.sm,
+      },
+      button: {
+        primary: {
+          backgroundColor: colors.primary,
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        secondary: {
+          backgroundColor: colors.primaryLight,
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        outline: {
+          backgroundColor: 'transparent',
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: colors.primary,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+      },
+      input: {
+        backgroundColor: isDark ? colors.lighter : colors.background,
+        borderWidth: 1,
+        borderColor: colors.light,
+        borderRadius: 12,
+        padding: 14,
+        fontSize: 16,
+        color: colors.dark,
+      }
+    };
+  },
+  
+  // Helper function to get current theme colors
+  getColors: (isDarkMode) => {
+    return isDarkMode ? Theme.dark.colors : Theme.light.colors;
   }
 };
+
+// Legacy getters for backward compatibility
+// IMPORTANT: These will always return light theme values, which is causing dark mode issues
+// Consider migrating all components to use the theme context instead of these getters
+Object.defineProperty(Theme, 'colors', {
+  get: function() {
+    return this.light.colors;
+  }
+});
+
+Object.defineProperty(Theme, 'common', {
+  get: function() {
+    return this.getCommonStyles(false);
+  }
+});
 
 export default Theme;

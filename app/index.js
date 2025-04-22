@@ -9,7 +9,8 @@ import {
   Modal,
   StatusBar,
   Image,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../firebase';
@@ -18,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from './components/BottomNavBar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Theme from '../constants/Theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -45,6 +47,11 @@ export default function Home() {
   
   // Add state for recent transactions
   const [recentTransactions, setRecentTransactions] = useState([]);
+
+  const { isDarkMode } = useTheme();
+  // Get current theme colors
+  const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
 
   const fetchSummaryData = async (year = selectedYear) => {
     try {
@@ -249,17 +256,17 @@ export default function Home() {
           activeOpacity={1}
         >
           <View style={{
-            backgroundColor: Theme.colors.white,
+            backgroundColor: colors.card,
             borderRadius: Theme.borderRadius.lg,
             padding: Theme.spacing.lg,
             width: '80%',
             maxWidth: 300,
-            ...Theme.shadows.lg
+            ...shadows.lg
           }}>
             <Text style={{
               fontSize: Theme.typography.fontSizes.lg,
               fontWeight: Theme.typography.fontWeights.bold,
-              color: Theme.colors.dark,
+              color: colors.dark,
               marginBottom: Theme.spacing.md,
               textAlign: 'center'
             }}>
@@ -271,13 +278,13 @@ export default function Home() {
                 style={{
                   paddingVertical: Theme.spacing.md,
                   backgroundColor: selectedYear === year 
-                    ? Theme.colors.primaryLight 
-                    : Theme.colors.white,
+                    ? colors.primaryLight 
+                    : colors.card,
                   borderRadius: Theme.borderRadius.md,
                   marginBottom: Theme.spacing.sm,
                   alignItems: 'center',
                   borderWidth: selectedYear === year ? 1 : 0,
-                  borderColor: Theme.colors.primary,
+                  borderColor: colors.primary,
                 }}
                 onPress={() => {
                   setSelectedYear(year);
@@ -290,8 +297,8 @@ export default function Home() {
                     ? Theme.typography.fontWeights.bold 
                     : Theme.typography.fontWeights.medium,
                   color: selectedYear === year 
-                    ? Theme.colors.primary 
-                    : Theme.colors.dark,
+                    ? colors.primary 
+                    : colors.dark,
                 }}>
                   {year}
                 </Text>
@@ -307,29 +314,29 @@ export default function Home() {
   const cardConfigs = {
     expenses: {
       icon: "wallet-outline",
-      color: Theme.colors.primary,
-      bgColor: `${Theme.colors.primary}15`,
+      color: colors.primary,
+      bgColor: `${colors.primary}15`,
       title: "Expenses",
       route: "/expense"
     },
     lent: {
       icon: "arrow-up-outline",
-      color: Theme.colors.success,
-      bgColor: `${Theme.colors.success}15`,
+      color: colors.success,
+      bgColor: `${colors.success}15`,
       title: "Lent Money",
       route: "/lending"
     },
     borrowed: {
       icon: "arrow-down-outline",
-      color: Theme.colors.error, 
-      bgColor: `${Theme.colors.error}15`,
+      color: colors.error, 
+      bgColor: `${colors.error}15`,
       title: "Borrowed",
       route: "/borrowing"
     },
     investments: {
       icon: "trending-up-outline",
-      color: Theme.colors.info,
-      bgColor: `${Theme.colors.info}15`,
+      color: colors.info,
+      bgColor: `${colors.info}15`,
       title: "Investments",
       route: "/investment"
     }
@@ -338,21 +345,38 @@ export default function Home() {
   // Get category color for expense items
   const getCategoryColor = (category) => {
     const categoryColors = {
-      Food: Theme.colors.success,
-      Transport: Theme.colors.info,
-      Shopping: Theme.colors.warning,
+      Food: colors.success,
+      Transport: colors.info,
+      Shopping: colors.warning,
       Entertainment: '#8b5cf6',
-      Bills: Theme.colors.error,
+      Bills: colors.error,
       Healthcare: '#06b6d4',
       Education: '#ec4899',
       Travel: '#f97316',
       Groceries: '#10b981',
-      Others: Theme.colors.medium
+      Others: colors.medium
     };
     
-    return categoryColors[category] || Theme.colors.medium;
+    return categoryColors[category] || colors.medium;
   };
   
+  // Map categories to Ionicons icons
+  const getCategoryIcon = (category) => {
+    const categoryIcons = {
+      Food: 'fast-food-outline',
+      Transport: 'car-outline',
+      Shopping: 'cart-outline',
+      Entertainment: 'musical-notes-outline',
+      Bills: 'document-text-outline',
+      Healthcare: 'medkit-outline',
+      Education: 'school-outline',
+      Travel: 'airplane-outline',
+      Groceries: 'basket-outline',
+      Others: 'ellipsis-horizontal-circle-outline',
+    };
+    return categoryIcons[category] || 'card-outline';
+  };
+
   // Format date to readable format
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -367,11 +391,11 @@ export default function Home() {
       <TouchableOpacity 
         style={{
           width: '48%',
-          backgroundColor: Theme.colors.white,
+          backgroundColor: colors.card,
           borderRadius: Theme.borderRadius.lg,
           padding: Theme.spacing.md,
           marginBottom: Theme.spacing.md,
-          ...Theme.shadows.md,
+          ...shadows.md,
           elevation: 3,
           borderWidth: 1,
           borderColor: `${config.color}40`
@@ -399,7 +423,7 @@ export default function Home() {
           <Text style={{
             fontSize: Theme.typography.fontSizes.md,
             fontWeight: Theme.typography.fontWeights.semiBold,
-            color: Theme.colors.dark,
+            color: colors.dark,
             marginTop: Theme.spacing.xs
           }}>
             {config.title}
@@ -439,17 +463,17 @@ export default function Home() {
   // Render a transaction item
   const TransactionItem = ({ transaction }) => {
     const categoryColor = getCategoryColor(transaction.category);
-    
+    const iconName = getCategoryIcon(transaction.category);
     return (
       <TouchableOpacity 
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: Theme.colors.white,
+          backgroundColor: colors.card,
           padding: Theme.spacing.md,
           borderRadius: Theme.borderRadius.md,
           marginBottom: Theme.spacing.sm,
-          ...Theme.shadows.sm,
+          ...shadows.sm,
         }}
         onPress={() => router.push({ pathname: '/expense', params: { id: transaction.id } })}
         activeOpacity={0.7}
@@ -463,30 +487,28 @@ export default function Home() {
           alignItems: 'center',
           marginRight: Theme.spacing.md,
         }}>
-          <Ionicons name="card-outline" size={20} color={categoryColor} />
+          <Ionicons name={iconName} size={20} color={categoryColor} />
         </View>
-        
         <View style={{ flex: 1 }}>
           <Text style={{
             fontSize: Theme.typography.fontSizes.md,
             fontWeight: Theme.typography.fontWeights.semiBold,
-            color: Theme.colors.dark,
+            color: colors.dark,
             marginBottom: 2,
           }}>
             {transaction.note || transaction.category}
           </Text>
           <Text style={{
             fontSize: Theme.typography.fontSizes.sm,
-            color: Theme.colors.medium,
+            color: colors.medium,
           }}>
             {formatDate(transaction.date)}
           </Text>
         </View>
-        
         <Text style={{
           fontSize: Theme.typography.fontSizes.md,
           fontWeight: Theme.typography.fontWeights.bold,
-          color: Theme.colors.error,
+          color: colors.error,
         }}>
           -₹{transaction.amount}
         </Text>
@@ -501,19 +523,19 @@ export default function Home() {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: Theme.colors.background,
+        backgroundColor: colors.background,
       }}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
     <>
-      <StatusBar barStyle="dark-content" backgroundColor={Theme.colors.background} />
-      <View style={{ flex: 1, backgroundColor: Theme.colors.white }}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 90 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -521,7 +543,7 @@ export default function Home() {
           {/* Header */}
           <View
             style={{
-              backgroundColor: Theme.colors.white,
+              backgroundColor: colors.background,
               paddingTop: 60,
               paddingBottom: 30,
               paddingHorizontal: Theme.spacing.lg,
@@ -536,7 +558,7 @@ export default function Home() {
               <View>
                 <Text style={{
                   fontSize: Theme.typography.fontSizes.md,
-                  color: Theme.colors.medium,
+                  color: colors.medium,
                   marginBottom: 4,
                 }}>
                   Welcome back
@@ -544,7 +566,7 @@ export default function Home() {
                 <Text style={{
                   fontSize: Theme.typography.fontSizes.xl + 2,
                   fontWeight: Theme.typography.fontWeights.bold,
-                  color: Theme.colors.dark,
+                  color: colors.dark,
                 }}>
                   {userName || 'User'}
                 </Text>
@@ -556,7 +578,7 @@ export default function Home() {
                   height: 46,
                   borderRadius: 23,
                   overflow: 'hidden',
-                  ...Theme.shadows.sm,
+                  ...shadows.sm,
                 }}
                 onPress={() => router.push('/settings')}
               >
@@ -577,38 +599,38 @@ export default function Home() {
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: Theme.colors.white,
+                  backgroundColor: colors.card,
                   paddingVertical: Theme.spacing.sm,
                   paddingHorizontal: Theme.spacing.md,
                   borderRadius: 20,
-                  ...Theme.shadows.sm,
+                  ...shadows.sm,
                 }}
                 onPress={() => setShowYearPicker(true)}
               >
                 <Text style={{
-                  color: Theme.colors.dark,
+                  color: colors.dark,
                   fontWeight: Theme.typography.fontWeights.medium,
                   fontSize: Theme.typography.fontSizes.md,
                   marginRight: Theme.spacing.xs,
                 }}>
                   {selectedYear}
                 </Text>
-                <Ionicons name="chevron-down" size={16} color={Theme.colors.dark} />
+                <Ionicons name="chevron-down" size={16} color={colors.dark} />
               </TouchableOpacity>
               
               <TouchableOpacity
                 style={{
-                  backgroundColor: Theme.colors.primary,
+                  backgroundColor: colors.primary,
                   width: 46,
                   height: 46,
                   borderRadius: 23,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  ...Theme.shadows.sm,
+                  ...shadows.sm,
                 }}
                 onPress={() => router.push('/expense')}
               >
-                <Ionicons name="add" size={28} color={Theme.colors.white} />
+                <Ionicons name="add" size={28} color={colors.white} />
               </TouchableOpacity>
             </View>
           </View>
@@ -621,7 +643,7 @@ export default function Home() {
             <Text style={{
               fontSize: Theme.typography.fontSizes.md,
               fontWeight: Theme.typography.fontWeights.bold,
-              color: Theme.colors.dark,
+              color: colors.dark,
               marginBottom: Theme.spacing.md,
             }}>
               Financial Overview
@@ -654,7 +676,7 @@ export default function Home() {
               <Text style={{
                 fontSize: Theme.typography.fontSizes.md,
                 fontWeight: Theme.typography.fontWeights.bold,
-                color: Theme.colors.dark,
+                color: colors.dark,
               }}>
                 Recent Transactions
               </Text>
@@ -662,7 +684,7 @@ export default function Home() {
               <TouchableOpacity onPress={() => router.push('/expense')}>
                 <Text style={{
                   fontSize: Theme.typography.fontSizes.sm,
-                  color: Theme.colors.primary,
+                  color: colors.primary,
                   fontWeight: Theme.typography.fontWeights.semiBold,
                 }}>
                   View All
@@ -676,17 +698,17 @@ export default function Home() {
               ))
             ) : (
               <View style={{
-                backgroundColor: Theme.colors.white,
+                backgroundColor: colors.card,
                 padding: Theme.spacing.lg,
                 borderRadius: Theme.borderRadius.md,
                 alignItems: 'center',
-                ...Theme.shadows.sm,
+                ...shadows.sm,
               }}>
-                <Ionicons name="receipt-outline" size={40} color={Theme.colors.light} />
+                <Ionicons name="receipt-outline" size={40} color={colors.light} />
                 <Text style={{
                   marginTop: Theme.spacing.md,
                   fontSize: Theme.typography.fontSizes.md,
-                  color: Theme.colors.medium,
+                  color: colors.medium,
                   textAlign: 'center',
                 }}>
                   No recent transactions found
@@ -694,7 +716,7 @@ export default function Home() {
                 <TouchableOpacity 
                   style={{
                     marginTop: Theme.spacing.md,
-                    backgroundColor: Theme.colors.primary,
+                    backgroundColor: colors.primary,
                     paddingVertical: Theme.spacing.sm,
                     paddingHorizontal: Theme.spacing.lg,
                     borderRadius: Theme.borderRadius.md,
@@ -702,7 +724,7 @@ export default function Home() {
                   onPress={() => router.push('/expense')}
                 >
                   <Text style={{
-                    color: Theme.colors.white,
+                    color: colors.white,
                     fontWeight: Theme.typography.fontWeights.semiBold,
                   }}>
                     Add Transaction
@@ -716,52 +738,55 @@ export default function Home() {
           <View style={{ 
             marginHorizontal: 20, 
             marginVertical: 10,
-            backgroundColor: Theme.colors.white,
+            backgroundColor: colors.card,
             borderRadius: 16,
             overflow: 'hidden',
-            shadowColor: '#000',
-            shadowOffset: {width: 0, height: 1},
-            shadowOpacity: 0.05,
-            shadowRadius: 3,
+            // Improved iOS shadow properties
+            shadowColor: Platform.OS === 'ios' ? '#00000033' : '#000',
+            shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
+            shadowOpacity: Platform.OS === 'ios' ? 0.25 : 0.05,
+            shadowRadius: Platform.OS === 'ios' ? 4 : 3,
             elevation: 2,
           }}>
             <LinearGradient
-              colors={[`${Theme.colors.primary}15`, Theme.colors.white]}
+              colors={[`${colors.primary}15`, colors.card]}
               start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 0.6 }}
+              end={{ x: 0, y: 1 }}
               style={{ padding: 20 }}
             >
               <View style={{ 
                 width: 40, 
                 height: 40, 
                 borderRadius: 20,
-                backgroundColor: Theme.colors.white,
+                backgroundColor: colors.card,
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginBottom: 14,
-                shadowColor: '#000',
-                shadowOffset: {width: 0, height: 1},
-                shadowOpacity: 0.1,
-                shadowRadius: 2,
+                // iOS-specific shadow for the icon circle
+                shadowColor: Platform.OS === 'ios' ? '#00000040' : '#000',
+                shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
+                shadowOpacity: Platform.OS === 'ios' ? 0.2 : 0.1,
+                shadowRadius: Platform.OS === 'ios' ? 3 : 2,
                 elevation: 1,
               }}>
-                <Ionicons name="bulb-outline" size={22} color={Theme.colors.primary} />
+                <Ionicons name="bulb-outline" size={22} color={colors.primary} />
               </View>
               
               <Text style={{ 
                 fontSize: 18,
                 lineHeight: 26,
-                color: Theme.colors.dark,
+                color: colors.dark,
                 fontStyle: 'italic',
                 marginBottom: 12,
                 fontWeight: '500',
+                letterSpacing: 0.2,
               }}>
                 "Wealth is not about having a lot of money; it's about having a lot of options."
               </Text>
               
               <Text style={{
                 fontSize: 14,
-                color: Theme.colors.medium,
+                color: colors.medium,
                 textAlign: 'right',
                 fontWeight: '600'
               }}>
