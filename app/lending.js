@@ -90,122 +90,199 @@ function AddLoanForm({ onClose, onAdded }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff', padding: 24, paddingTop: 46 }}>
-      <TouchableOpacity
-        onPress={onClose}
-        style={{ position: 'absolute', top: 40, right: 18, zIndex: 10, padding: 6 }}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      >
-        <Ionicons name="close-circle" size={32} color="#ef4444" />
-      </TouchableOpacity>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 18, color: '#111' }}>Add Loan</Text>
-      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 24, gap: 12 }}>
-        <TouchableOpacity
-          style={{ flex: 1, borderRadius: 12, backgroundColor: loanType === 'given' ? '#6366f1' : '#F3F4F6', alignItems: 'center', padding: 12, flexDirection: 'row', justifyContent: 'center' }}
-          onPress={() => setLoanType('given')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="arrow-up-circle" size={22} color={loanType === 'given' ? '#fff' : '#6366f1'} style={{ marginRight: 8 }} />
-          <Text style={{ color: loanType === 'given' ? '#fff' : '#6366f1', fontWeight: '700', fontSize: 16 }}>Money Given</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={{ flex: 1, borderRadius: 12, backgroundColor: loanType === 'taken' ? '#ef4444' : '#F3F4F6', alignItems: 'center', padding: 12, flexDirection: 'row', justifyContent: 'center' }}
-          onPress={() => setLoanType('taken')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="arrow-down-circle" size={22} color={loanType === 'taken' ? '#fff' : '#ef4444'} style={{ marginRight: 8 }} />
-          <Text style={{ color: loanType === 'taken' ? '#fff' : '#ef4444', fontWeight: '700', fontSize: 16 }}>Money Taken</Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={{ marginBottom: 8, fontSize: 18, color: '#6366f1', fontWeight: '600' }}>Amount (₹)</Text>
-      <TextInput
-        style={{ borderWidth: 1, borderColor: '#6366f1', borderRadius: 10, padding: 10, fontSize: 18, fontWeight: '600', color: '#222', backgroundColor: '#F8FAFF', marginBottom: 18 }}
-        placeholder="Enter amount"
-        keyboardType="numeric"
-        value={form.amount}
-        onChangeText={(text) => handleChange('amount', text)}
-        placeholderTextColor="#b6c3e0"
-      />
-      <Text style={{ marginBottom: 8, fontSize: 18, color: '#6366f1', fontWeight: '600' }}>Lender</Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: '#fff', padding: 10 }}>
+      <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
+        {/* Header with Title and Close Button */}
+        <View style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: 24,
+          marginTop: 46
+        }}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Add Loan</Text>
+          <TouchableOpacity
+            onPress={onClose}
+            style={{
+              padding: 8,
+              borderRadius: 8,
+              backgroundColor: '#fee2e2'
+            }}
+          >
+            <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Loan Type Selector */}
+        <Text style={{ marginBottom: 8, fontSize: 18 }}>Loan Type</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
+          <TouchableOpacity
+            style={{ 
+              flex: 1, 
+              borderRadius: 8, 
+              backgroundColor: loanType === 'given' ? '#6366f1' : '#F3F4F6', 
+              alignItems: 'center', 
+              padding: 12, 
+              flexDirection: 'row', 
+              justifyContent: 'center' 
+            }}
+            onPress={() => setLoanType('given')}
+            activeOpacity={0.85}
+          >
+            <Ionicons 
+              name="arrow-up-circle" 
+              size={22} 
+              color={loanType === 'given' ? '#fff' : '#6366f1'} 
+              style={{ marginRight: 8 }} 
+            />
+            <Text style={{ 
+              color: loanType === 'given' ? '#fff' : '#6366f1', 
+              fontWeight: '700', 
+              fontSize: 16 
+            }}>Money Given</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ 
+              flex: 1, 
+              borderRadius: 8, 
+              backgroundColor: loanType === 'taken' ? '#ef4444' : '#F3F4F6', 
+              alignItems: 'center', 
+              padding: 12, 
+              flexDirection: 'row', 
+              justifyContent: 'center' 
+            }}
+            onPress={() => setLoanType('taken')}
+            activeOpacity={0.85}
+          >
+            <Ionicons 
+              name="arrow-down-circle" 
+              size={22} 
+              color={loanType === 'taken' ? '#fff' : '#ef4444'} 
+              style={{ marginRight: 8 }} 
+            />
+            <Text style={{ 
+              color: loanType === 'taken' ? '#fff' : '#ef4444', 
+              fontWeight: '700', 
+              fontSize: 16 
+            }}>Money Taken</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Amount Field */}
+        <Text style={{ marginBottom: 8, fontSize: 18 }}>Amount (₹)</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <TextInput
+            style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, flex: 1, fontSize: 18 }}
+            keyboardType="numeric"
+            value={form.amount}
+            onChangeText={(text) => handleChange('amount', text.replace(/[^0-9.]/g, ''))}
+            placeholder="₹5000"
+            placeholderTextColor="#aaa"
+          />
+        </View>
+
+        {/* Lender Field */}
+        <Text style={{ marginBottom: 8, fontSize: 18 }}>Lender</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+          <TextInput
+            style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 18 }}
+            placeholder="Enter lender's name"
+            value={form.lender}
+            onChangeText={(text) => handleChange('lender', text)}
+            placeholderTextColor="#aaa"
+          />
+          <TouchableOpacity onPress={selectContact} style={{ marginLeft: 10, padding: 8 }}>
+            <Ionicons name="person-circle-outline" size={28} color="#6366f1" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Phone Number Field */}
+        <Text style={{ marginBottom: 8, fontSize: 18 }}>Phone Number</Text>
         <TextInput
-          style={{ flex: 1, borderWidth: 1, borderColor: '#6366f1', borderRadius: 10, padding: 10, fontSize: 18, color: '#222', backgroundColor: '#F8FAFF' }}
-          placeholder="Enter lender's name"
-          value={form.lender}
-          onChangeText={(text) => handleChange('lender', text)}
-          placeholderTextColor="#b6c3e0"
+          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 18, marginBottom: 20 }}
+          placeholder="Phone number (auto-filled if contact selected)"
+          value={form.lenderNumber}
+          onChangeText={(text) => handleChange('lenderNumber', text)}
+          placeholderTextColor="#aaa"
+          keyboardType="phone-pad"
         />
-        <TouchableOpacity onPress={selectContact} style={{ marginLeft: 10 }}>
-          <Ionicons name="person-circle-outline" size={28} color="#6366f1" />
-        </TouchableOpacity>
-      </View>
-      <TextInput
-        style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, fontSize: 16, color: '#444', backgroundColor: '#F8FAFF', marginBottom: 18 }}
-        placeholder="Phone number (auto-filled if contact selected)"
-        value={form.lenderNumber}
-        onChangeText={(text) => handleChange('lenderNumber', text)}
-        placeholderTextColor="#b6c3e0"
-        keyboardType="phone-pad"
-      />
-      <Text style={{ marginBottom: 8, fontSize: 18, color: '#6366f1', fontWeight: '600' }}>Description (Optional)</Text>
-      <TextInput
-        style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 10, fontSize: 16, color: '#444', backgroundColor: '#F8FAFF', marginBottom: 18 }}
-        placeholder="Enter description"
-        value={form.description}
-        onChangeText={(text) => handleChange('description', text)}
-        placeholderTextColor="#b6c3e0"
-      />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 10 }}>
+
+        {/* Description Field */}
+        <Text style={{ marginBottom: 8, fontSize: 18 }}>Description (Optional)</Text>
+        <TextInput
+          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 18, marginBottom: 20 }}
+          placeholder="Any note about this loan"
+          multiline
+          value={form.description}
+          onChangeText={(text) => handleChange('description', text)}
+          placeholderTextColor="#aaa"
+        />
+
+        {/* Transaction Date Field */}
+        <Text style={{ marginBottom: 8, fontSize: 18 }}>Transaction Date</Text>
         <TouchableOpacity
-          style={{ flex: 1, backgroundColor: '#F8FAFF', borderColor: '#6366f1', borderWidth: 1, borderRadius: 10, alignItems: 'center', flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 10, marginRight: 8 }}
+          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 14, marginBottom: 20 }}
           onPress={() => setShowDatePicker(true)}
-          activeOpacity={0.85}
         >
-          <Ionicons name="calendar-outline" size={20} color="#6366f1" style={{ marginRight: 6 }} />
-          <Text style={{ color: '#222', fontWeight: '500', fontSize: 15 }}>{new Date(form.date).toLocaleDateString()}</Text>
+          <Text style={{ color: '#222', fontSize: 18 }}>{form.date}</Text>
         </TouchableOpacity>
+        {showDatePicker && (
+          <DateTimePicker
+            value={form.date ? new Date(form.date) : new Date()}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (selectedDate) {
+                handleChange('date', selectedDate.toISOString().split('T')[0]);
+              }
+            }}
+          />
+        )}
+
+        {/* Due Date Field */}
+        <Text style={{ marginBottom: 8, fontSize: 18 }}>Due Date</Text>
         <TouchableOpacity
-          style={{ flex: 1, backgroundColor: '#F8FAFF', borderColor: '#6366f1', borderWidth: 1, borderRadius: 10, alignItems: 'center', flexDirection: 'row', paddingVertical: 12, paddingHorizontal: 10, marginLeft: 8 }}
+          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 14, marginBottom: 28 }}
           onPress={() => setShowDueDatePicker(true)}
-          activeOpacity={0.85}
         >
-          <Ionicons name="calendar-outline" size={20} color="#6366f1" style={{ marginRight: 6 }} />
-          <Text style={{ color: '#222', fontWeight: '500', fontSize: 15 }}>Due: {new Date(form.dueDate).toLocaleDateString()}</Text>
+          <Text style={{ color: '#222', fontSize: 18 }}>{form.dueDate}</Text>
         </TouchableOpacity>
+        {showDueDatePicker && (
+          <DateTimePicker
+            value={form.dueDate ? new Date(form.dueDate) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDueDatePicker(false);
+              if (selectedDate) {
+                handleChange('dueDate', selectedDate.toISOString().split('T')[0]);
+              }
+            }}
+          />
+        )}
+
+        {/* Save Button */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
+          <TouchableOpacity 
+            style={{ 
+              flex: 1, 
+              backgroundColor: '#6366f1', 
+              padding: 16, 
+              borderRadius: 8, 
+              alignItems: 'center', 
+              flexDirection: 'row', 
+              justifyContent: 'center' 
+            }} 
+            onPress={handleSubmit}
+          >
+            <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>Save</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      {showDatePicker && (
-        <DateTimePicker
-          value={new Date(form.date)}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={(event, selectedDate) => {
-            setShowDatePicker(false);
-            if (selectedDate) {
-              handleChange('date', selectedDate.toISOString().split('T')[0]);
-            }
-          }}
-        />
-      )}
-      {showDueDatePicker && (
-        <DateTimePicker
-          value={new Date(form.dueDate)}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={(event, selectedDate) => {
-            setShowDueDatePicker(false);
-            if (selectedDate) {
-              handleChange('dueDate', selectedDate.toISOString().split('T')[0]);
-            }
-          }}
-        />
-      )}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: '#6366f1', padding: 16, borderRadius: 8, alignItems: 'center', marginRight: 10, flexDirection: 'row', justifyContent: 'center' }} onPress={handleSubmit}>
-          <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>Save</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    </ScrollView>
   );
 }
 
