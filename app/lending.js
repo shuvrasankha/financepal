@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
 import styles from '../styles/LendingStyles';
@@ -10,6 +10,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Platform } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
+import Theme from '../constants/Theme';
 
 function AddLoanForm({ onClose, onAdded }) {
   const [loanType, setLoanType] = useState('given');
@@ -23,6 +25,11 @@ function AddLoanForm({ onClose, onAdded }) {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  
+  // Get theme colors
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
 
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -90,8 +97,14 @@ function AddLoanForm({ onClose, onAdded }) {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff', padding: 10 }}>
-      <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
+    <ScrollView 
+      style={{ 
+        flex: 1, 
+        backgroundColor: colors.background
+      }}
+    >
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+      <View style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}>
         {/* Header with Title and Close Button */}
         <View style={{ 
           flexDirection: 'row', 
@@ -100,27 +113,27 @@ function AddLoanForm({ onClose, onAdded }) {
           marginBottom: 24,
           marginTop: 46
         }}>
-          <Text style={{ fontSize: 24, fontWeight: 'bold' }}>Add Loan</Text>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.dark }}>Add Loan</Text>
           <TouchableOpacity
             onPress={onClose}
             style={{
               padding: 8,
               borderRadius: 8,
-              backgroundColor: '#fee2e2'
+              backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2'
             }}
           >
-            <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+            <Ionicons name="close-circle-outline" size={24} color={colors.error} />
           </TouchableOpacity>
         </View>
 
         {/* Loan Type Selector */}
-        <Text style={{ marginBottom: 8, fontSize: 18 }}>Loan Type</Text>
+        <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Loan Type</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
           <TouchableOpacity
             style={{ 
               flex: 1, 
               borderRadius: 8, 
-              backgroundColor: loanType === 'given' ? '#6366f1' : '#F3F4F6', 
+              backgroundColor: loanType === 'given' ? colors.primary : isDarkMode ? colors.lighter : '#F3F4F6', 
               alignItems: 'center', 
               padding: 12, 
               flexDirection: 'row', 
@@ -132,11 +145,11 @@ function AddLoanForm({ onClose, onAdded }) {
             <Ionicons 
               name="arrow-up-circle" 
               size={22} 
-              color={loanType === 'given' ? '#fff' : '#6366f1'} 
+              color={loanType === 'given' ? colors.white : colors.primary} 
               style={{ marginRight: 8 }} 
             />
             <Text style={{ 
-              color: loanType === 'given' ? '#fff' : '#6366f1', 
+              color: loanType === 'given' ? colors.white : colors.primary, 
               fontWeight: '700', 
               fontSize: 16 
             }}>Money Given</Text>
@@ -145,7 +158,7 @@ function AddLoanForm({ onClose, onAdded }) {
             style={{ 
               flex: 1, 
               borderRadius: 8, 
-              backgroundColor: loanType === 'taken' ? '#ef4444' : '#F3F4F6', 
+              backgroundColor: loanType === 'taken' ? colors.error : isDarkMode ? colors.lighter : '#F3F4F6', 
               alignItems: 'center', 
               padding: 12, 
               flexDirection: 'row', 
@@ -157,11 +170,11 @@ function AddLoanForm({ onClose, onAdded }) {
             <Ionicons 
               name="arrow-down-circle" 
               size={22} 
-              color={loanType === 'taken' ? '#fff' : '#ef4444'} 
+              color={loanType === 'taken' ? colors.white : colors.error} 
               style={{ marginRight: 8 }} 
             />
             <Text style={{ 
-              color: loanType === 'taken' ? '#fff' : '#ef4444', 
+              color: loanType === 'taken' ? colors.white : colors.error, 
               fontWeight: '700', 
               fontSize: 16 
             }}>Money Taken</Text>
@@ -169,62 +182,105 @@ function AddLoanForm({ onClose, onAdded }) {
         </View>
 
         {/* Amount Field */}
-        <Text style={{ marginBottom: 8, fontSize: 18 }}>Amount (₹)</Text>
+        <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Amount (₹)</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
           <TextInput
-            style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, flex: 1, fontSize: 18 }}
+            style={{ 
+              borderWidth: 1, 
+              borderColor: isDarkMode ? colors.light : '#e5e7eb', 
+              borderRadius: 8,
+              padding: 10, 
+              flex: 1, 
+              fontSize: 18,
+              color: colors.dark,
+              backgroundColor: colors.card
+            }}
             keyboardType="numeric"
             value={form.amount}
             onChangeText={(text) => handleChange('amount', text.replace(/[^0-9.]/g, ''))}
             placeholder="₹5000"
-            placeholderTextColor="#aaa"
+            placeholderTextColor={isDarkMode ? colors.medium : "#aaa"}
           />
         </View>
 
         {/* Lender Field */}
-        <Text style={{ marginBottom: 8, fontSize: 18 }}>Lender</Text>
+        <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Lender</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
           <TextInput
-            style={{ flex: 1, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 18 }}
+            style={{ 
+              flex: 1, 
+              borderWidth: 1, 
+              borderColor: isDarkMode ? colors.light : '#e5e7eb', 
+              borderRadius: 8, 
+              padding: 10, 
+              fontSize: 18,
+              color: colors.dark,
+              backgroundColor: colors.card
+            }}
             placeholder="Enter lender's name"
             value={form.lender}
             onChangeText={(text) => handleChange('lender', text)}
-            placeholderTextColor="#aaa"
+            placeholderTextColor={isDarkMode ? colors.medium : "#aaa"}
           />
           <TouchableOpacity onPress={selectContact} style={{ marginLeft: 10, padding: 8 }}>
-            <Ionicons name="person-circle-outline" size={28} color="#6366f1" />
+            <Ionicons name="person-circle-outline" size={28} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
         {/* Phone Number Field */}
-        <Text style={{ marginBottom: 8, fontSize: 18 }}>Phone Number</Text>
+        <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Phone Number</Text>
         <TextInput
-          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 18, marginBottom: 20 }}
+          style={{ 
+            borderWidth: 1, 
+            borderColor: isDarkMode ? colors.light : '#e5e7eb', 
+            borderRadius: 8, 
+            padding: 10, 
+            fontSize: 18, 
+            marginBottom: 20,
+            color: colors.dark,
+            backgroundColor: colors.card
+          }}
           placeholder="Phone number (auto-filled if contact selected)"
           value={form.lenderNumber}
           onChangeText={(text) => handleChange('lenderNumber', text)}
-          placeholderTextColor="#aaa"
+          placeholderTextColor={isDarkMode ? colors.medium : "#aaa"}
           keyboardType="phone-pad"
         />
 
         {/* Description Field */}
-        <Text style={{ marginBottom: 8, fontSize: 18 }}>Description (Optional)</Text>
+        <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Description (Optional)</Text>
         <TextInput
-          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 18, marginBottom: 20 }}
+          style={{ 
+            borderWidth: 1, 
+            borderColor: isDarkMode ? colors.light : '#e5e7eb', 
+            borderRadius: 8, 
+            padding: 10, 
+            fontSize: 18, 
+            marginBottom: 20,
+            color: colors.dark,
+            backgroundColor: colors.card
+          }}
           placeholder="Any note about this loan"
           multiline
           value={form.description}
           onChangeText={(text) => handleChange('description', text)}
-          placeholderTextColor="#aaa"
+          placeholderTextColor={isDarkMode ? colors.medium : "#aaa"}
         />
 
         {/* Transaction Date Field */}
-        <Text style={{ marginBottom: 8, fontSize: 18 }}>Transaction Date</Text>
+        <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Transaction Date</Text>
         <TouchableOpacity
-          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 14, marginBottom: 20 }}
+          style={{ 
+            borderWidth: 1, 
+            borderColor: isDarkMode ? colors.light : '#e5e7eb', 
+            borderRadius: 8, 
+            padding: 14, 
+            marginBottom: 20,
+            backgroundColor: colors.card
+          }}
           onPress={() => setShowDatePicker(true)}
         >
-          <Text style={{ color: '#222', fontSize: 18 }}>{form.date}</Text>
+          <Text style={{ color: colors.dark, fontSize: 18 }}>{form.date}</Text>
         </TouchableOpacity>
         {showDatePicker && (
           <DateTimePicker
@@ -242,12 +298,19 @@ function AddLoanForm({ onClose, onAdded }) {
         )}
 
         {/* Due Date Field */}
-        <Text style={{ marginBottom: 8, fontSize: 18 }}>Due Date</Text>
+        <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Due Date</Text>
         <TouchableOpacity
-          style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 14, marginBottom: 28 }}
+          style={{ 
+            borderWidth: 1, 
+            borderColor: isDarkMode ? colors.light : '#e5e7eb', 
+            borderRadius: 8, 
+            padding: 14, 
+            marginBottom: 28,
+            backgroundColor: colors.card
+          }}
           onPress={() => setShowDueDatePicker(true)}
         >
-          <Text style={{ color: '#222', fontSize: 18 }}>{form.dueDate}</Text>
+          <Text style={{ color: colors.dark, fontSize: 18 }}>{form.dueDate}</Text>
         </TouchableOpacity>
         {showDueDatePicker && (
           <DateTimePicker
@@ -268,17 +331,18 @@ function AddLoanForm({ onClose, onAdded }) {
           <TouchableOpacity 
             style={{ 
               flex: 1, 
-              backgroundColor: '#6366f1', 
+              backgroundColor: colors.primary, 
               padding: 16, 
               borderRadius: 8, 
               alignItems: 'center', 
               flexDirection: 'row', 
-              justifyContent: 'center' 
+              justifyContent: 'center',
+              ...shadows.sm
             }} 
             onPress={handleSubmit}
           >
-            <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>Save</Text>
+            <Ionicons name="checkmark-circle-outline" size={22} color={colors.white} style={{ marginRight: 8 }} />
+            <Text style={{ color: colors.white, fontWeight: 'bold', fontSize: 18 }}>Save</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -302,6 +366,11 @@ export default function Lending() {
   const [loanSummary, setLoanSummary] = useState({});
   const [loansLoading, setLoansLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  
+  // Get theme colors
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -495,49 +564,194 @@ export default function Lending() {
 
   return (
     <>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 80 }}>
-        <Text style={[styles.title, { fontSize: 28, fontWeight: 'bold', color: '#111', marginBottom: 12, letterSpacing: 0.5, paddingTop: 46 }]}>Lending</Text>
-        {/* Total Pending Amount Card */}
-        <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 20, marginBottom: 18, alignItems: 'center', shadowColor: '#6366f1', shadowOpacity: 0.08, shadowRadius: 6, elevation: 2 }}>
-          <Text style={{ fontSize: 16, color: '#6b7280', marginBottom: 6 }}>Total Pending Amount</Text>
-          <Text style={{ fontSize: 28, fontWeight: 'bold', color: '#6366f1' }}>₹{Object.values(loanSummary).reduce((sum, amt) => sum + (amt || 0), 0).toLocaleString('en-IN')}</Text>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+      <ScrollView 
+        style={[styles.container, { backgroundColor: colors.background }]} 
+        contentContainerStyle={{ paddingBottom: 80 }}
+      >
+        <View style={{ 
+          flexDirection: 'row', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          marginBottom: 12,
+          paddingTop: 46
+        }}>
+          <Text style={[styles.title, { color: colors.dark, letterSpacing: 0.5 }]}>
+            Lending
+          </Text>
+          
+          {/* Add Button */}
+          <TouchableOpacity
+            style={{
+              backgroundColor: colors.primary,
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginRight: 20,
+              ...shadows.sm,
+            }}
+            onPress={() => setShowAddModal(true)}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add" size={24} color={colors.white} />
+          </TouchableOpacity>
         </View>
-        {/* Loan summary section - moved up, styled as a card */}
-        <View style={[styles.card, { marginBottom: 24, padding: 0, overflow: 'hidden', borderRadius: 18, shadowColor: '#6366f1', shadowOpacity: 0.10, shadowRadius: 12, elevation: 3 }]}> 
-          <View style={{ backgroundColor: '#fff', paddingVertical: 18, paddingHorizontal: 20, borderTopLeftRadius: 18, borderTopRightRadius: 18 }}>
-            <Text style={{ color: '#111', fontSize: 22, fontWeight: 'bold', letterSpacing: 0.5 }}>Loan Summary</Text>
+        
+        {/* Total Pending Amount Card */}
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: 14,
+          padding: 20,
+          marginBottom: 18,
+          alignItems: 'center',
+          ...shadows.sm
+        }}>
+          <Text style={{ fontSize: 16, color: colors.medium, marginBottom: 6 }}>
+            Total Pending Amount
+          </Text>
+          <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary }}>
+            ₹{Object.values(loanSummary).reduce((sum, amt) => sum + (amt || 0), 0).toLocaleString('en-IN')}
+          </Text>
+        </View>
+        
+        {/* Loan summary section */}
+        <View style={[
+          styles.card, 
+          { 
+            marginBottom: 24, 
+            padding: 0, 
+            overflow: 'hidden', 
+            borderRadius: 18, 
+            backgroundColor: colors.card,
+            ...shadows.md
+          }
+        ]}> 
+          <View style={{ 
+            backgroundColor: colors.card, 
+            paddingVertical: 18, 
+            paddingHorizontal: 20, 
+            borderTopLeftRadius: 18, 
+            borderTopRightRadius: 18,
+            borderBottomWidth: 1,
+            borderBottomColor: isDarkMode ? colors.lighter : '#e5e7eb'
+          }}>
+            <Text style={{ 
+              color: colors.dark, 
+              fontSize: 22, 
+              fontWeight: 'bold', 
+              letterSpacing: 0.5 
+            }}>
+              Loan Summary
+            </Text>
           </View>
+          
           {loansLoading ? (
-            <View style={{ padding: 24, alignItems: 'center' }}><Text style={{ color: '#6366f1', fontWeight: '600' }}>Loading...</Text></View>
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={{ color: colors.primary, fontWeight: '600' }}>
+                Loading...
+              </Text>
+            </View>
           ) : Object.keys(loanSummary).length === 0 ? (
-            <View style={{ padding: 24, alignItems: 'center' }}><Text style={{ color: '#888' }}>No loans found.</Text></View>
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={{ color: colors.medium }}>
+                No loans found.
+              </Text>
+            </View>
           ) : (
             <View style={{ paddingHorizontal: 0, paddingBottom: 8 }}>
               {/* Table Header */}
-              <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', paddingVertical: 14, paddingHorizontal: 18, borderTopWidth: 0, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-                <Text style={{ flex: 2, fontWeight: '700', color: '#6366f1', fontSize: 16, letterSpacing: 0.2 }}>Contact</Text>
-                <Text style={{ flex: 1, fontWeight: '700', color: '#6366f1', fontSize: 16, textAlign: 'right', letterSpacing: 0.2 }}>Pending</Text>
+              <View style={{ 
+                flexDirection: 'row', 
+                backgroundColor: isDarkMode ? colors.lighter : '#f3f4f6', 
+                paddingVertical: 14, 
+                paddingHorizontal: 18,
+                borderBottomWidth: 1, 
+                borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e5e7eb' 
+              }}>
+                <Text style={{ 
+                  flex: 2, 
+                  fontWeight: '700', 
+                  color: colors.primary, 
+                  fontSize: 16, 
+                  letterSpacing: 0.2 
+                }}>
+                  Contact
+                </Text>
+                <Text style={{ 
+                  flex: 1, 
+                  fontWeight: '700', 
+                  color: colors.primary, 
+                  fontSize: 16, 
+                  textAlign: 'right', 
+                  letterSpacing: 0.2 
+                }}>
+                  Pending
+                </Text>
               </View>
+              
               {/* Table Rows */}
               {Object.entries(loanSummary).map(([contact, pending], idx) => (
-                <View key={contact + idx} style={{ flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', backgroundColor: idx % 2 === 0 ? '#fff' : '#f8faff', paddingVertical: 16, paddingHorizontal: 18 }}>
-                  <Ionicons name="person-circle" size={28} color="#6366f1" style={{ marginRight: 10 }} />
-                  <Text style={{ flex: 2, color: '#222', fontWeight: '600', fontSize: 15 }}>{contact}</Text>
-                  <Text style={{ flex: 1, color: pending === 0 ? '#888' : (pending > 0 ? '#10b981' : '#ef4444'), fontWeight: '700', fontSize: 16, textAlign: 'right' }}>₹{pending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                <View key={contact + idx} style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  borderBottomWidth: 1, 
+                  borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6', 
+                  backgroundColor: idx % 2 === 0 
+                    ? colors.card 
+                    : isDarkMode ? 'rgba(99, 102, 241, 0.08)' : '#f8faff', 
+                  paddingVertical: 16, 
+                  paddingHorizontal: 18 
+                }}>
+                  <Ionicons 
+                    name="person-circle" 
+                    size={28} 
+                    color={colors.primary} 
+                    style={{ marginRight: 10 }} 
+                  />
+                  <Text style={{ 
+                    flex: 2, 
+                    color: colors.dark, 
+                    fontWeight: '600', 
+                    fontSize: 15 
+                  }}>
+                    {contact}
+                  </Text>
+                  <Text style={{ 
+                    flex: 1, 
+                    color: pending === 0 
+                      ? colors.medium 
+                      : (pending > 0 ? colors.success : colors.error), 
+                    fontWeight: '700', 
+                    fontSize: 16, 
+                    textAlign: 'right' 
+                  }}>
+                    ₹{pending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </Text>
                 </View>
               ))}
             </View>
           )}
         </View>
+        
         {/* Line Graph: Pending Amount per Month */}
-        <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 10, color: '#1f2937' }}>Pending Amount (Last 12 Months)</Text>
+        <Text style={{ 
+          fontSize: 18, 
+          fontWeight: '600', 
+          marginBottom: 10, 
+          color: colors.dark 
+        }}>
+          Pending Amount (Last 12 Months)
+        </Text>
+        
         <LineChart
           data={{
             labels: months.map(m => m.label),
             datasets: [
               {
                 data: [0, ...monthlyPendingData],
-                color: () => '#6366f1',
+                color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
                 strokeWidth: 2,
               },
             ],
@@ -546,45 +760,28 @@ export default function Lending() {
           height={200}
           yAxisLabel="₹"
           chartConfig={{
-            backgroundColor: '#fff',
-            backgroundGradientFrom: '#f9f9f9',
-            backgroundGradientTo: '#f9f9f9',
+            backgroundColor: colors.card,
+            backgroundGradientFrom: colors.card,
+            backgroundGradientTo: colors.card,
             decimalPlaces: 0,
             color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(31, 41, 55, ${opacity})`,
+            labelColor: (opacity = 1) => `rgba(${isDarkMode ? '255, 255, 255' : '31, 41, 55'}, ${opacity})`,
             style: { borderRadius: 16 },
             propsForDots: {
               r: '5',
               strokeWidth: '2',
-              stroke: '#6366f1',
+              stroke: colors.primary,
             },
           }}
           bezier
-          style={{ marginVertical: 12, borderRadius: 12 }}
+          style={{ 
+            marginVertical: 12, 
+            borderRadius: 12,
+            ...shadows.sm
+          }}
         />
       </ScrollView>
-      {/* Floating Add Button */}
-      <TouchableOpacity
-        style={{
-          position: 'absolute',
-          right: 24,
-          bottom: 80,
-          backgroundColor: '#6366f1',
-          width: 60,
-          height: 60,
-          borderRadius: 30,
-          justifyContent: 'center',
-          alignItems: 'center',
-          shadowColor: '#6366f1',
-          shadowOpacity: 0.18,
-          shadowRadius: 8,
-          elevation: 6,
-        }}
-        onPress={() => setShowAddModal(true)}
-        activeOpacity={0.85}
-      >
-        <Ionicons name="add" size={32} color="#fff" />
-      </TouchableOpacity>
+      
       {/* Add Loan Modal */}
       <Modal visible={showAddModal} animationType="slide" onRequestClose={() => setShowAddModal(false)}>
         <AddLoanForm onClose={() => setShowAddModal(false)} onAdded={fetchLoansFromFirestore} />
