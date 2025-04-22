@@ -1,54 +1,67 @@
-import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, Alert } from 'react-native';
 import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { View, Text, ActivityIndicator } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Theme from '../constants/Theme';
 
 export default function RootLayout() {
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
-    const checkLock = async () => {
-      const lockEnabled = await AsyncStorage.getItem('appLockEnabled');
-      if (lockEnabled === 'true') {
-        const compatible = await LocalAuthentication.hasHardwareAsync();
-        const enrolled = await LocalAuthentication.isEnrolledAsync();
-        if (!compatible || !enrolled) {
-          Alert.alert('App Lock Disabled', 'No biometrics or PIN set up on this device.');
-          await AsyncStorage.setItem('appLockEnabled', 'false');
+    // Check authentication state
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+
+      if (currentUser) {
+        // Check if app lock is enabled
+        const appLockEnabled = await AsyncStorage.getItem('appLockEnabled');
+        if (appLockEnabled === 'true') {
+          // User is logged in and app lock is enabled, now authenticate
+          try {
+            const { success } = await LocalAuthentication.authenticateAsync({
+              promptMessage: 'Authenticate to unlock FinancePal',
+              fallbackLabel: 'Use passcode to unlock',
+            });
+            setLocked(!success);
+            setLoading(false);
+          } catch (error) {
+            console.log('Error with local authentication:', error);
+            setLocked(false);
+            setLoading(false);
+          }
+        } else {
+          // App lock is not enabled, so don't lock
           setLocked(false);
-          return;
+          setLoading(false);
         }
-        const result = await LocalAuthentication.authenticateAsync({
-          promptMessage: 'Unlock FinancePal',
-          fallbackLabel: 'Enter device PIN',
-        });
-        setLocked(!result.success);
       } else {
+        // Not logged in, so don't lock
         setLocked(false);
+        setLoading(false);
       }
-    };
-    checkLock();
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setLoading(false);
     });
-    return () => unsubscribe();
+
+    return unsubscribe;
   }, []);
 
   if (loading || locked) {
     return (
-      <View style={[styles.container, { backgroundColor: '#6366f1' }]}> 
+      <View style={[styles.container, { backgroundColor: Theme.colors.primary }]}> 
         <View style={{ alignItems: 'center' }}>
-          <View style={{ backgroundColor: '#fff', borderRadius: 60, padding: 18, marginBottom: 24 }}>
-            <Text style={{ fontSize: 40, color: '#6366f1', fontWeight: 'bold' }}>🔒</Text>
+          <View style={{ backgroundColor: Theme.colors.white, borderRadius: 60, padding: 18, marginBottom: 24 }}>
+            <Text style={{ fontSize: 40, color: Theme.colors.primary, fontWeight: 'bold' }}>🔒</Text>
           </View>
-          <Text style={{ fontSize: 28, color: '#fff', fontWeight: '700', marginBottom: 8 }}>App Locked</Text>
-          <Text style={{ color: '#e0e7ff', fontSize: 16, marginBottom: 24, textAlign: 'center', maxWidth: 260 }}>
+          <Text style={{ fontSize: 28, color: Theme.colors.white, fontWeight: '700', marginBottom: 8 }}>App Locked</Text>
+          <Text style={{ color: Theme.colors.primaryLight, fontSize: 16, marginBottom: 24, textAlign: 'center', maxWidth: 260 }}>
             For your security, please authenticate to continue using FinancePal.
           </Text>
-          <ActivityIndicator size="large" color="#fff" />
+          <ActivityIndicator size="large" color={Theme.colors.white} />
         </View>
       </View>
     );
@@ -59,10 +72,14 @@ export default function RootLayout() {
       screenOptions={{
         headerShown: false,
         headerStyle: {
-          backgroundColor: '#f9f9f9',
+          backgroundColor: Theme.colors.background,
         },
         headerShadowVisible: false,
         headerBackTitle: 'Back',
+        headerTintColor: Theme.colors.primary,
+        contentStyle: {
+          backgroundColor: Theme.colors.background
+        }
       }}
     >
       <Stack.Screen
@@ -109,6 +126,18 @@ export default function RootLayout() {
           title: 'Investment',
         }}
       />
+      <Stack.Screen
+        name="lending"
+        options={{
+          title: 'Lending',
+        }}
+      />
+      <Stack.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+        }}
+      />
     </Stack>
   );
 }
@@ -118,6 +147,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
   },
 });
