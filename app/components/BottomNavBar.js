@@ -1,68 +1,87 @@
 import React from 'react';
-import { View, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Theme from '../../constants/Theme';
 
 const BottomNavBar = () => {
   const nav = useNavigation();
   const route = useRoute();
   const active = route.name;
+
   const navItems = [
-    { name: 'index', icon: 'home-outline', label: 'Home' },
-    { name: 'expense', icon: 'wallet-outline', label: 'Expenses' },
-    { name: 'expenseAnalysis', icon: 'bar-chart-outline', label: 'Analysis' },
-    { name: 'settings', icon: 'settings-outline', label: 'Settings' },
+    { name: 'index', icon: 'home', label: 'Home' },
+    { name: 'expense', icon: 'wallet', label: 'Expenses' },
+    { name: 'expenseAnalysis', icon: 'bar-chart', label: 'Analysis' },
+    { name: 'investment', icon: 'trending-up', label: 'Investment' },
+    { name: 'settings', icon: 'settings', label: 'Settings' },
   ];
+
   return (
     <LinearGradient
-      colors={["#e0e7ffcc", "#f0fdf4cc"]}
+      style={styles.container}
+      colors={['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 0.97)']}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        height: 70,
-        borderTopLeftRadius: 22,
-        borderTopRightRadius: 22,
-        marginHorizontal: 10,
-        marginBottom: 8,
-        shadowColor: '#6366f1',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.10,
-        shadowRadius: 12,
-        elevation: 12,
-        backgroundColor: 'transparent',
-      }}
+      end={{ x: 0, y: 1 }}
     >
       {navItems.map(item => (
         <TouchableOpacity
           key={item.name}
           onPress={() => nav.navigate(item.name)}
           accessibilityLabel={item.label}
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            flex: 1,
-            borderRadius: 16,
-            paddingVertical: 6,
-            backgroundColor: active === item.name ? '#6366f1' : 'transparent',
-            marginHorizontal: 6,
-            shadowColor: active === item.name ? '#6366f1' : 'transparent',
-            shadowOpacity: active === item.name ? 0.12 : 0,
-            shadowRadius: 8,
-          }}
+          style={[
+            styles.navButton,
+            active === item.name && styles.activeNavButton
+          ]}
         >
           <Ionicons
             name={item.icon}
-            size={28}
-            color={active === item.name ? '#fff' : '#6366f1'}
+            size={24}
+            color={active === item.name ? Theme.colors.white : Theme.colors.primary}
           />
         </TouchableOpacity>
       ))}
     </LinearGradient>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    height: 70,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    marginHorizontal: 10,
+    marginBottom: 8,
+    shadowColor: Theme.colors.primary,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 12,
+    elevation: 12,
+    backgroundColor: 'transparent',
+  },
+  navButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 6,
+    backgroundColor: 'transparent',
+    marginHorizontal: 6,
+  },
+  activeNavButton: {
+    backgroundColor: Theme.colors.primary,
+    shadowColor: Theme.colors.primary,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+  }
+});
 
 export default BottomNavBar;
