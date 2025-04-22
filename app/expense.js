@@ -832,15 +832,42 @@ const Expense = () => {
 
         {/* Add Expense Modal */}
         <Modal visible={showAddModal} animationType="slide" onRequestClose={() => setShowAddModal(false)}>
-          <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
-            <View style={styles.card}>
-              <View style={styles.inputGroup}>
-                <View style={styles.labelContainer}>
-                  <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Amount</Text>
-                </View>
+          <ScrollView style={{ flex: 1, backgroundColor: '#fff', padding: 10 }}>
+            <View style={{ flex: 1, backgroundColor: '#fff', padding: 24 }}>
+              {/* Header with Title and Close Button */}
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginBottom: 24,
+                marginTop: 46
+              }}>
+                <Text style={{ fontSize: 24, fontWeight: 'bold' }}>{isEditing ? 'Edit Expense' : 'Add Expense'}</Text>
+                <TouchableOpacity
+                  onPress={() => setShowAddModal(false)}
+                  style={{
+                    padding: 8,
+                    borderRadius: 8,
+                    backgroundColor: '#fee2e2'
+                  }}
+                >
+                  <Ionicons name="close-circle-outline" size={24} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Amount Field */}
+              <Text style={{ marginBottom: 8, fontSize: 18 }}>Amount (₹)</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
                 <TextInput
-                  style={[styles.input, inputHighlight.amount && { borderColor: '#ef4444', borderWidth: 2 }]}
-                  placeholder="Enter amount in ₹"
+                  style={{ 
+                    borderWidth: 1, 
+                    borderColor: inputHighlight.amount ? '#ef4444' : '#e5e7eb', 
+                    borderRadius: 8, 
+                    padding: 10, 
+                    flex: 1, 
+                    fontSize: 18 
+                  }}
+                  keyboardType="numeric"
                   value={amount}
                   onChangeText={(text) => {
                     // Allow only numbers and a single decimal point
@@ -850,143 +877,130 @@ const Expense = () => {
                     }
                     if (inputHighlight.amount) setInputHighlight((prev) => ({ ...prev, amount: false }));
                   }}
-                  keyboardType="numeric" // Ensures numeric keyboard is displayed
-                  maxLength={10}
-                  placeholderTextColor="#9ca3af"
+                  placeholder="Enter amount"
+                  placeholderTextColor="#aaa"
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <View style={styles.labelContainer}>
-                  <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Category</Text>
-                </View>
-                {/* Category grid selection UI */}
-                <View style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  marginTop: 8,
-                  marginBottom: 4,
-                }}>
-                  {CATEGORIES.map((item, idx) => (
-                    <TouchableOpacity
-                      key={item}
-                      style={{
-                        width: '23%', // 4 columns with space
-                        aspectRatio: 1,
-                        marginBottom: 12,
-                        borderRadius: 16,
-                        backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
-                        borderWidth: category === item ? 2 : 1,
-                        borderColor: inputHighlight.category && !category ? '#ef4444' : (category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb'),
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: 8,
-                      }}
-                      onPress={() => {
-                        setCategory(item);
-                        if (inputHighlight.category) setInputHighlight((prev) => ({ ...prev, category: false }));
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons
-                        name={CATEGORY_ICONS[item]}
-                        size={28}
-                        color={category === item ? '#fff' : (CATEGORY_COLORS[item] || '#6366f1')}
-                        style={{ marginBottom: 0 }}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <View style={styles.labelContainer}>
-                  <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Expense Date</Text>
-                </View>
-                {Platform.OS !== 'web' ? (
-                  <>
-                    <TouchableOpacity 
-                      style={styles.input}
-                      onPress={() => setShowExpenseDatePicker(true)}
-                    >
-                      <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
-                    </TouchableOpacity>
-                    {showExpenseDatePicker && (
-                      <DateTimePicker
-                        value={expenseDate}
-                        mode="date"
-                        display="default"
-                        onChange={onExpenseDateChange}
-                      />
-                    )}
-                  </>
-                ) : (
+              {/* Category Selector */}
+              <Text style={{ marginBottom: 8, fontSize: 18 }}>Category</Text>
+              <View style={{ 
+                flexDirection: 'row', 
+                flexWrap: 'wrap', 
+                justifyContent: 'space-between',
+                marginBottom: 20,
+                borderWidth: inputHighlight.category ? 2 : 0,
+                borderColor: inputHighlight.category ? '#ef4444' : 'transparent',
+                borderRadius: 8,
+                padding: inputHighlight.category ? 8 : 0
+              }}>
+                {CATEGORIES.map((item, idx) => (
                   <TouchableOpacity
-                    style={styles.input}
-                    onPress={() => {
-                      const newDate = prompt(
-                        'Enter expense date (YYYY-MM-DD):',
-                        expenseDate.toISOString().split('T')[0]
-                      );
-                      if (newDate) {
-                        const parsedDate = new Date(newDate);
-                        if (!isNaN(parsedDate)) {
-                          setExpenseDate(parsedDate);
-                        } else {
-                          Alert.alert(
-                            'Invalid Date',
-                            'Please enter a valid date in YYYY-MM-DD format.'
-                          );
-                        }
-                      }
+                    key={item}
+                    style={{
+                      width: '23%', 
+                      aspectRatio: 1,
+                      marginBottom: 12,
+                      borderRadius: 16,
+                      backgroundColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#f3f4f6',
+                      borderWidth: 1,
+                      borderColor: category === item ? (CATEGORY_COLORS[item] || '#6366f1') : '#e5e7eb',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 8,
                     }}
+                    onPress={() => {
+                      setCategory(item);
+                      if (inputHighlight.category) setInputHighlight((prev) => ({ ...prev, category: false }));
+                    }}
+                    activeOpacity={0.8}
                   >
-                    <Text style={styles.inputText}>{expenseDate.toLocaleDateString()}</Text>
+                    <Ionicons
+                      name={CATEGORY_ICONS[item]}
+                      size={24}
+                      color={category === item ? '#fff' : (CATEGORY_COLORS[item] || '#6366f1')}
+                    />
+                    <Text style={{ 
+                      color: category === item ? '#fff' : '#333', 
+                      fontSize: 12, 
+                      marginTop: 4,
+                      textAlign: 'center'
+                    }}>
+                      {item}
+                    </Text>
                   </TouchableOpacity>
-                )}
+                ))}
               </View>
 
-              <View style={styles.inputGroup}>
-                <View style={styles.labelContainer}>
-                  <Text style={[styles.label, { fontSize: 19, color: '#000' }]}>Note</Text>
-                </View>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Optional note"
-                  value={note}
-                  onChangeText={setNote}
-                  placeholderTextColor="#9ca3af"
+              {/* Date Field */}
+              <Text style={{ marginBottom: 8, fontSize: 18 }}>Expense Date</Text>
+              <TouchableOpacity
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 14, marginBottom: 20 }}
+                onPress={() => setShowExpenseDatePicker(true)}
+              >
+                <Text style={{ color: '#222', fontSize: 18 }}>{expenseDate.toISOString().split('T')[0]}</Text>
+              </TouchableOpacity>
+              {showExpenseDatePicker && (
+                <DateTimePicker
+                  value={expenseDate}
+                  mode="date"
+                  display="default"
+                  maximumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowExpenseDatePicker(false);
+                    if (selectedDate) {
+                      setExpenseDate(selectedDate);
+                    }
+                  }}
                 />
-              </View>
+              )}
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+              {/* Note Field */}
+              <Text style={{ marginBottom: 8, fontSize: 18 }}>Note (Optional)</Text>
+              <TextInput
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, marginBottom: 28, fontSize: 18 }}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Any note..."
+                placeholderTextColor="#aaa"
+              />
+
+              {/* Save Button */}
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 }}>
                 <TouchableOpacity 
-                  style={{ flex: 1, backgroundColor: '#6366f1', padding: 16, borderRadius: 8, alignItems: 'center', marginRight: 10, flexDirection: 'row', justifyContent: 'center' }} 
+                  style={{ 
+                    flex: 1, 
+                    backgroundColor: '#6366f1', 
+                    padding: 16, 
+                    borderRadius: 8, 
+                    alignItems: 'center', 
+                    flexDirection: 'row', 
+                    justifyContent: 'center' 
+                  }} 
                   onPress={addExpense}
                 >
                   <Ionicons name="checkmark-circle-outline" size={22} color="#fff" style={{ marginRight: 8 }} />
                   <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 18 }}>{isEditing ? 'Update' : 'Save'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={{ flex: 1, backgroundColor: '#fee2e2', padding: 16, borderRadius: 8, alignItems: 'center', marginLeft: 10, flexDirection: 'row', justifyContent: 'center' }} 
-                  onPress={() => setShowAddModal(false)}
-                >
-                  <Ionicons name="close-circle-outline" size={22} color="#ef4444" style={{ marginRight: 8 }} />
-                  <Text style={{ color: '#ef4444', fontWeight: 'bold', fontSize: 18 }}>Close</Text>
-                </TouchableOpacity>
               </View>
               
+              {/* Cancel Editing Button (when editing) */}
               {isEditing && (
                 <TouchableOpacity 
-                  style={styles.cancelButton} 
+                  style={{ 
+                    marginTop: 16,
+                    backgroundColor: '#f3f4f6',
+                    padding: 16,
+                    borderRadius: 8,
+                    alignItems: 'center'
+                  }} 
                   onPress={resetForm}
                 >
-                  <Text style={styles.cancelButtonText}>Cancel Editing</Text>
+                  <Text style={{ color: '#ef4444', fontWeight: '600', fontSize: 16 }}>Cancel Editing</Text>
                 </TouchableOpacity>
               )}
             </View>
-          </View>
+          </ScrollView>
         </Modal>
       </SafeAreaView>
       <BottomNavBar />
