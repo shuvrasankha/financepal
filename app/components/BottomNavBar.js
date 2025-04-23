@@ -20,6 +20,7 @@ const BottomNavBar = () => {
   const navItems = [
     { name: 'index', icon: 'home', label: 'Home' },
     { name: 'expense', icon: 'wallet', label: 'Expenses' },
+    { name: 'budget', icon: 'calculator', label: 'Budget' },
     { name: 'expenseAnalysis', icon: 'bar-chart', label: 'Analysis' },
     { name: 'investment', icon: 'trending-up', label: 'Investment' },
     { name: 'settings', icon: 'settings', label: 'Settings' },

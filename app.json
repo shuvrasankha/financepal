@@ -12,7 +12,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.shuvrasankha007.financepal",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSContactsUsageDescription": "This app requires access to your contacts to select people for your loan records."
       }
     },
     "android": {
@@ -20,7 +21,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.shuvrasankha007.financepal"
+      "package": "com.shuvrasankha007.financepal",
+      "permissions": ["READ_CONTACTS"]
     },
     "web": {
       "bundler": "metro",

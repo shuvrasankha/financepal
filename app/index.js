@@ -41,6 +41,7 @@ export default function Home() {
 
   const [pendingLent, setPendingLent] = useState(0);
   const [investmentTotal, setInvestmentTotal] = useState(0);
+  const [budgetTotal, setBudgetTotal] = useState(0);
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [showYearPicker, setShowYearPicker] = useState(false);
@@ -146,6 +147,39 @@ export default function Home() {
     }
   };
 
+  // Fetch total budget amount for selected year
+  const fetchBudgetTotal = async (year = selectedYear) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      // Query budgets for the selected year
+      const q = query(
+        collection(db, 'budgets'), 
+        where('userId', '==', user.uid)
+      );
+      
+      const snapshot = await getDocs(q);
+      let total = 0;
+      
+      // Filter by year in JavaScript and sum the amounts
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const period = data.period || '';
+        const budgetYear = parseInt(period.split('-')[0]);
+        
+        if (budgetYear === year) {
+          total += (Number(data.amount) || 0);
+        }
+      });
+      
+      setBudgetTotal(total);
+    } catch (e) {
+      console.error('Error fetching budget total:', e);
+      setBudgetTotal(0);
+    }
+  };
+
   // Fetch user's profile information from Firestore
   const fetchUserProfile = async (uid) => {
     try {
@@ -188,14 +222,47 @@ export default function Home() {
     }
   };
 
+  // Fetch total pending borrowed amount
+  const fetchPendingBorrowed = async () => {
+    try {
+      if (!user || !user.uid) return;
+      const q = query(collection(db, 'borrowings'), where('userId', '==', user.uid));
+      const querySnapshot = await getDocs(q);
+      
+      let totalPending = 0;
+      querySnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const amount = Number(data.amount) || 0;
+        const repayment = Number(data.repayment) || 0;
+        // Only count if there's a remaining amount to repay
+        if (amount > repayment) {
+          totalPending += (amount - repayment);
+        }
+      });
+      
+      setTotals(prev => ({
+        ...prev,
+        borrowed: totalPending
+      }));
+    } catch (err) {
+      console.error('Error fetching pending borrowed amount:', err);
+      setTotals(prev => ({
+        ...prev,
+        borrowed: 0
+      }));
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (user && user.uid) {
       await Promise.all([
         fetchSummaryData(selectedYear),
         fetchPendingLent(),
+        fetchPendingBorrowed(),
         fetchInvestmentTotal(),
-        fetchRecentTransactions()
+        fetchRecentTransactions(),
+        fetchBudgetTotal(selectedYear)
       ]);
     }
     setRefreshing(false);
@@ -208,8 +275,10 @@ export default function Home() {
         fetchUserProfile(currentUser.uid);
         fetchSummaryData(selectedYear);
         fetchPendingLent();
+        fetchPendingBorrowed();
         fetchInvestmentTotal();
         fetchRecentTransactions();
+        fetchBudgetTotal(selectedYear);
       } else {
         router.replace('/login');
       }
@@ -222,6 +291,7 @@ export default function Home() {
   useEffect(() => {
     if (user) {
       fetchSummaryData(selectedYear);
+      fetchBudgetTotal(selectedYear);
     }
   }, [selectedYear]);
 
@@ -318,6 +388,13 @@ export default function Home() {
       bgColor: `${colors.primary}15`,
       title: "Expenses",
       route: "/expense"
+    },
+    budget: {
+      icon: "calculator-outline",
+      color: "#f59e0b", // Yellow color (Amber 600 from Tailwind)
+      bgColor: "#f59e0b15", // Light yellow background
+      title: "Budget",
+      route: "/budget"
     },
     lent: {
       icon: "arrow-up-outline",
@@ -655,6 +732,7 @@ export default function Home() {
               justifyContent: 'space-between',
             }}>
               <FinancialCard type="expenses" amount={totals.expenses} />
+              <FinancialCard type="budget" amount={budgetTotal} />
               <FinancialCard type="lent" amount={pendingLent} />
               <FinancialCard type="borrowed" amount={totals.borrowed} />
               <FinancialCard type="investments" amount={investmentTotal} />

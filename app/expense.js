@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase';
 import styles, { CATEGORY_COLORS } from '../styles/ExpenseStyles';
 import BottomNavBar from './components/BottomNavBar';
-import SwipeableRow from './components/SwipeableRow';
 import LoadingState from './components/LoadingState';
 import { useExpenses } from '../contexts/ExpenseContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -336,62 +335,61 @@ const Expense = () => {
     ));
   };
 
-  // Render expense item with swipe actions
+  // Render expense item with explicit buttons
   const renderExpenseItem = ({ item }) => {
-    // Define right swipe actions (edit, delete)
-    const rightActions = [
-      {
-        text: 'Edit',
-        icon: 'pencil',
-        color: colors.primary,
-        onPress: () => handleUpdate(item)
-      },
-      {
-        text: 'Delete',
-        icon: 'trash',
-        color: colors.error,
-        onPress: () => handleDeleteExpense(item.id)
-      }
-    ];
-
     return (
-      <SwipeableRow rightActions={rightActions}>
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.card,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 14,
+        ...Theme.shadows.sm,
+        marginHorizontal: 16,
+      }}>
+        {/* Category Icon */}
         <View style={{
-          flexDirection: 'row',
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          backgroundColor: CATEGORY_COLORS[item.category] || colors.light,
           alignItems: 'center',
-          backgroundColor: colors.card,
-          borderRadius: 16,
-          padding: 16,
-          marginBottom: 14,
-          ...Theme.shadows.sm,
-          marginHorizontal: 16,
+          justifyContent: 'center',
+          marginRight: 14,
         }}>
-          {/* Category Icon */}
-          <View style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            backgroundColor: CATEGORY_COLORS[item.category] || colors.light,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 14,
-          }}>
-            <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
-          </View>
-          {/* Main Info */}
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.dark }}>₹{item.amount.toFixed(2)}</Text>
-              {showMonthView && (
-                <Text style={{ fontSize: 12, color: colors.medium }}>{new Date(item.date).toLocaleDateString()}</Text>
-              )}
-            </View>
-            {item.note ? (
-              <Text style={{ fontSize: 12, color: colors.medium, marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
-            ) : null}
-          </View>
+          <Ionicons name={CATEGORY_ICONS[item.category]} size={22} color="#fff" />
         </View>
-      </SwipeableRow>
+        {/* Main Info */}
+        <View style={{ flex: 1, justifyContent: 'center', marginRight: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.dark }}>₹{item.amount.toFixed(2)}</Text>
+            {showMonthView && (
+              <Text style={{ fontSize: 12, color: colors.medium }}>{new Date(item.date).toLocaleDateString()}</Text>
+            )}
+          </View>
+          {item.note ? (
+            <Text style={{ fontSize: 12, color: colors.medium, marginTop: 2 }} numberOfLines={1}>{item.note}</Text>
+          ) : null}
+        </View>
+        {/* Action Buttons */}
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity
+            onPress={() => handleUpdate(item)}
+            style={{ padding: 6, marginRight: 8 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="create-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleDeleteExpense(item.id)}
+            style={{ padding: 6 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash" size={20} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 

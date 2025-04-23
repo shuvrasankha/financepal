@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Theme from '../constants/Theme';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { ExpenseProvider } from '../contexts/ExpenseContext';
+import { BudgetProvider } from '../contexts/BudgetContext';
 import { ErrorProvider } from '../contexts/ErrorContext';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -164,7 +165,9 @@ export default function RootLayout() {
       <ThemeProvider>
         <ErrorProvider>
           <ExpenseProvider>
-            <AppNavigator />
+            <BudgetProvider>
+              <AppNavigator />
+            </BudgetProvider>
           </ExpenseProvider>
         </ErrorProvider>
       </ThemeProvider>
