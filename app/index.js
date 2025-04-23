@@ -34,7 +34,6 @@ export default function Home() {
   const [totals, setTotals] = useState({
     expenses: 0,
     lent: 0,
-    borrowed: 0,
     pendingRepayments: 0,
     investments: 0
   });
@@ -222,44 +221,12 @@ export default function Home() {
     }
   };
 
-  // Fetch total pending borrowed amount
-  const fetchPendingBorrowed = async () => {
-    try {
-      if (!user || !user.uid) return;
-      const q = query(collection(db, 'borrowings'), where('userId', '==', user.uid));
-      const querySnapshot = await getDocs(q);
-      
-      let totalPending = 0;
-      querySnapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        const amount = Number(data.amount) || 0;
-        const repayment = Number(data.repayment) || 0;
-        // Only count if there's a remaining amount to repay
-        if (amount > repayment) {
-          totalPending += (amount - repayment);
-        }
-      });
-      
-      setTotals(prev => ({
-        ...prev,
-        borrowed: totalPending
-      }));
-    } catch (err) {
-      console.error('Error fetching pending borrowed amount:', err);
-      setTotals(prev => ({
-        ...prev,
-        borrowed: 0
-      }));
-    }
-  };
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     if (user && user.uid) {
       await Promise.all([
         fetchSummaryData(selectedYear),
         fetchPendingLent(),
-        fetchPendingBorrowed(),
         fetchInvestmentTotal(),
         fetchRecentTransactions(),
         fetchBudgetTotal(selectedYear)
@@ -275,7 +242,6 @@ export default function Home() {
         fetchUserProfile(currentUser.uid);
         fetchSummaryData(selectedYear);
         fetchPendingLent();
-        fetchPendingBorrowed();
         fetchInvestmentTotal();
         fetchRecentTransactions();
         fetchBudgetTotal(selectedYear);
@@ -402,13 +368,6 @@ export default function Home() {
       bgColor: `${colors.success}15`,
       title: "Lent Money",
       route: "/lending"
-    },
-    borrowed: {
-      icon: "arrow-down-outline",
-      color: colors.error, 
-      bgColor: `${colors.error}15`,
-      title: "Borrowed",
-      route: "/borrowing"
     },
     investments: {
       icon: "trending-up-outline",
@@ -734,7 +693,6 @@ export default function Home() {
               <FinancialCard type="expenses" amount={totals.expenses} />
               <FinancialCard type="budget" amount={budgetTotal} />
               <FinancialCard type="lent" amount={pendingLent} />
-              <FinancialCard type="borrowed" amount={totals.borrowed} />
               <FinancialCard type="investments" amount={investmentTotal} />
             </View>
           </View>

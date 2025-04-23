@@ -60,7 +60,8 @@ function AddInvestmentForm({ onClose, onAdded }) {
       await addDoc(collection(db, 'investments'), {
         userId: user.uid,
         amount: Number(form.amount),
-        investmentType: form.investmentType,
+        type: form.investmentType, // Changed to 'type' to match Firebase rules
+        investmentType: form.investmentType, // Keep this for backward compatibility
         dateInvested: form.dateInvested,
         note: form.note,
         stockName: form.stockName,
@@ -72,6 +73,7 @@ function AddInvestmentForm({ onClose, onAdded }) {
       if (onAdded) onAdded();
     } catch (e) {
       alert('Failed to add investment: ' + e.message);
+      console.error('Error adding investment:', e); // Added logging for debugging
     }
   };
 

@@ -47,9 +47,12 @@ const ContactSelector = ({ onSelectContact }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [allContactsLoaded, setAllContactsLoaded] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
+  const [recentContacts, setRecentContacts] = useState([]);
+  const [selectedContactId, setSelectedContactId] = useState(null);
   
-  // Animation values (simplified for Android)
+  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(300)).current;
   const searchInputRef = useRef(null);
   
   // Handle back button press on Android
@@ -68,17 +71,22 @@ const ContactSelector = ({ onSelectContact }) => {
     return () => backHandler.remove();
   }, [modalVisible]);
 
-  // Show animation when modal becomes visible (simplified for Android)
+  // Show animation when modal becomes visible
   useEffect(() => {
     if (modalVisible) {
-      // Use a simpler animation for Android
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
       
-      // Auto focus search input with a shorter delay for Android
       const focusDelay = Platform.OS === 'android' ? 300 : 500;
       setTimeout(() => {
         if (searchInputRef.current) {
@@ -88,8 +96,9 @@ const ContactSelector = ({ onSelectContact }) => {
     } else {
       // Reset animations when modal closes
       fadeAnim.setValue(0);
+      slideAnim.setValue(300);
     }
-  }, [modalVisible, fadeAnim]);
+  }, [modalVisible, fadeAnim, slideAnim]);
   
   // Open modal and load contacts
   const openContactSelector = () => {
@@ -99,13 +108,34 @@ const ContactSelector = ({ onSelectContact }) => {
     setContacts([]);
     setFilteredContacts([]);
     loadContacts();
+    
+    // Load recent contacts from storage
+    // In a real app, you'd load this from AsyncStorage or similar
+    // For now, we'll just use a placeholder
+    setRecentContacts([]);
   };
   
   // Close modal
   const closeModal = () => {
     Keyboard.dismiss();
-    setModalVisible(false);
-    setSearchQuery('');
+    
+    // Using animation to close
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 250,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      setModalVisible(false);
+      setSearchQuery('');
+      setSelectedContactId(null);
+    });
   };
   
   // Filter contacts based on search query
@@ -131,7 +161,7 @@ const ContactSelector = ({ onSelectContact }) => {
     filterContacts(searchQuery);
   }, [searchQuery, filterContacts]);
 
-  // Load contacts using pagination for better Android performance
+  // Load contacts using pagination for better performance
   const loadContacts = async (loadMore = false) => {
     if ((loading && !loadMore) || (loadingMore && loadMore) || allContactsLoaded) return;
     
@@ -154,8 +184,8 @@ const ContactSelector = ({ onSelectContact }) => {
       // Reset permission denied flag if previously denied
       setPermissionDenied(false);
 
-      // Use pagination for Android to improve performance
-      const pageSize = 50; // Smaller page size for Android
+      // Use pagination for better performance
+      const pageSize = Platform.OS === 'android' ? 50 : 100;
       const currentPageIndex = loadMore ? pageIndex + 1 : 0;
       
       const { data, hasNextPage } = await Contacts.getContactsAsync({
@@ -230,21 +260,37 @@ const ContactSelector = ({ onSelectContact }) => {
       .toUpperCase();
   };
 
-  // Function to handle contact selection with simpler animation for Android
+  // Function to handle contact selection with animation
   const handleSelectContact = (contact) => {
-    // Simplified animation for Android
-    if (Platform.OS === 'ios') {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    }
+    setSelectedContactId(contact.id);
     
-    // Provide selected contact to parent component
-    onSelectContact({
-      name: contact.name,
-      phoneNumber: contact.phoneNumber
-    });
+    // Animate selection
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        300,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity
+      )
+    );
     
-    // Close modal
-    closeModal();
+    // Add to recent contacts
+    const updatedRecentContacts = [
+      contact,
+      ...recentContacts.filter(c => c.id !== contact.id).slice(0, 4)
+    ];
+    setRecentContacts(updatedRecentContacts);
+    
+    // Small delay for visual feedback before closing
+    setTimeout(() => {
+      // Provide selected contact to parent component
+      onSelectContact({
+        name: contact.name,
+        phoneNumber: contact.phoneNumber
+      });
+      
+      // Close modal
+      closeModal();
+    }, 150);
   };
   
   // Function to format phone number for display
@@ -263,22 +309,6 @@ const ContactSelector = ({ onSelectContact }) => {
     return phoneNumber;
   };
   
-  // Function to determine phone label
-  const getPhoneLabel = (label) => {
-    if (!label) return '';
-    
-    // Convert standard phone labels to human-readable form
-    const labelMap = {
-      'home': 'Home',
-      'work': 'Work',
-      'mobile': 'Mobile',
-      'main': 'Main',
-      'other': 'Other'
-    };
-    
-    return labelMap[label.toLowerCase()] || label;
-  };
-
   // Handle reaching end of list for pagination
   const handleEndReached = () => {
     if (!loading && !loadingMore && !allContactsLoaded && contacts.length > 0) {
@@ -300,30 +330,29 @@ const ContactSelector = ({ onSelectContact }) => {
     );
   };
 
-  // Render individual contact item with optimizations for Android
+  // Render individual contact item with optimizations
   const renderContactItem = useCallback(({ item }) => {
-    // Use a more Android-friendly style for better performance
-    const androidSpecificStyles = Platform.OS === 'android' ? {
-      elevation: 0,
-      borderBottomWidth: 1,
-      borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-      borderRadius: 0,
-      marginHorizontal: 0,
-      paddingHorizontal: 16,
-    } : {};
+    const isSelected = selectedContactId === item.id;
     
     return (
       <TouchableOpacity 
         style={[
           styles.contactItem,
-          { backgroundColor: colors.card },
-          androidSpecificStyles
+          { 
+            backgroundColor: isSelected 
+              ? (isDarkMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)')
+              : colors.card 
+          },
+          Platform.OS === 'android' && {
+            borderBottomWidth: 1,
+            borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+          }
         ]}
         activeOpacity={0.7}
         onPress={() => handleSelectContact(item)}
       >
-        {/* Contact Image/Avatar with fallback for Android */}
-        {(item.imageUri && Platform.OS === 'ios') ? (
+        {/* Contact Avatar */}
+        {item.imageUri ? (
           <Image 
             source={{ uri: item.imageUri }} 
             style={styles.contactImage}
@@ -334,8 +363,8 @@ const ContactSelector = ({ onSelectContact }) => {
             styles.avatar,
             { backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)' }
           ]}>
-            <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 16 }}>
-              {item.initials || '?'}
+            <Text style={[styles.initials, { color: colors.primary }]}>
+              {item.initials}
             </Text>
           </View>
         )}
@@ -347,61 +376,67 @@ const ContactSelector = ({ onSelectContact }) => {
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {item.name || 'Unknown'}
+            {item.name}
           </Text>
-          <View style={styles.phoneContainer}>
-            {item.phoneLabel && Platform.OS === 'ios' && (
-              <Text style={[styles.phoneLabel, { color: colors.medium }]}>
-                {getPhoneLabel(item.phoneLabel) || ''}
-              </Text>
-            )}
-            <Text 
-              style={[styles.contactPhone, { color: colors.medium }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {formatPhoneNumber(item.phoneNumber) || ''}
-            </Text>
-          </View>
+          <Text 
+            style={[styles.contactPhone, { color: colors.medium }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {formatPhoneNumber(item.phoneNumber)}
+          </Text>
         </View>
         
         {/* Selection indicator */}
-        <View style={styles.selectionIndicator}>
-          <MaterialIcons 
-            name={Platform.OS === 'android' ? "check-circle-outline" : "keyboard-arrow-right"} 
-            size={24} 
-            color={colors.primary} 
-          />
+        <View style={styles.checkboxContainer}>
+          {isSelected ? (
+            <View style={[styles.checkbox, { backgroundColor: colors.primary }]}>
+              <Ionicons name="checkmark" size={16} color="#ffffff" />
+            </View>
+          ) : (
+            <View style={[styles.checkbox, { borderColor: colors.medium }]} />
+          )}
         </View>
       </TouchableOpacity>
     );
-  }, [colors, handleSelectContact, isDarkMode]);
+  }, [colors, isDarkMode, handleSelectContact, selectedContactId]);
 
-  // Android doesn't need an item separator since we're using borderBottom
-  const ItemSeparator = useCallback(() => (
-    Platform.OS === 'ios' ? (
-      <View style={{ 
-        height: 1, 
-        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-        marginLeft: 72 // Align with the start of contact name
-      }} />
-    ) : null
-  ), [isDarkMode]);
-  
+  // Recent contacts section
+  const renderRecentContacts = () => {
+    if (recentContacts.length === 0 || searchQuery.trim() !== '') return null;
+    
+    return (
+      <View style={styles.recentContactsContainer}>
+        <Text style={[styles.sectionTitle, { color: colors.medium }]}>
+          Recent Contacts
+        </Text>
+        <FlatList
+          data={recentContacts}
+          keyExtractor={(item) => `recent-${item.id}`}
+          renderItem={renderContactItem}
+          horizontal
+          contentContainerStyle={styles.recentContactsList}
+          showsHorizontalScrollIndicator={false}
+        />
+        <View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]} />
+      </View>
+    );
+  };
+
   // Render empty state
   const renderEmptyState = useCallback(() => (
     <View style={styles.emptyState}>
       <Ionicons 
-        name={permissionDenied ? "lock-closed" : "people"} 
+        name={permissionDenied ? "lock-closed" : (searchQuery ? "search" : "people")} 
         size={50} 
         color={colors.medium} 
       />
       <Text style={[styles.emptyText, { color: colors.medium }]}>
         {permissionDenied 
-          ? "Permission to access contacts was denied. Please grant permission in your settings."
+          ? "Permission to access contacts was denied"
           : searchQuery 
             ? "No contacts match your search" 
-            : loading ? "Loading contacts..." : "No contacts found on your device"
+            : "No contacts found"
         }
       </Text>
       {permissionDenied && (
@@ -415,86 +450,9 @@ const ContactSelector = ({ onSelectContact }) => {
         </TouchableOpacity>
       )}
     </View>
-  ), [permissionDenied, colors, searchQuery, loadContacts, loading]);
+  ), [permissionDenied, colors, searchQuery, loadContacts]);
 
-  // Android-optimized search bar
-  const renderSearchBar = () => (
-    <View style={[
-      styles.searchContainer, 
-      { 
-        backgroundColor: isDarkMode ? colors.lighter : '#f3f4f6',
-        ...Platform.select({
-          android: {
-            elevation: 2,
-            marginTop: 0,
-            marginBottom: 8,
-            marginHorizontal: 0,
-            borderRadius: 0
-          },
-          ios: {
-            ...shadows.sm,
-            margin: 16,
-            borderRadius: 10
-          }
-        })
-      }
-    ]}>
-      <Ionicons name="search" size={20} color={colors.medium} style={styles.searchIcon} />
-      <TextInput
-        ref={searchInputRef}
-        style={[styles.searchInput, { color: colors.dark }]}
-        placeholder="Search contacts..."
-        placeholderTextColor={colors.medium}
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        autoCapitalize="none"
-        returnKeyType="search"
-        clearButtonMode="while-editing"
-      />
-      {searchQuery.length > 0 && (
-        <TouchableOpacity 
-          onPress={() => setSearchQuery('')}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="close-circle" size={20} color={colors.medium} />
-        </TouchableOpacity>
-      )}
-    </View>
-  );
-
-  // Android-optimized header
-  const renderHeader = () => (
-    <View style={[
-      styles.header, 
-      { 
-        backgroundColor: colors.primary,
-        borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-        ...Platform.select({
-          android: {
-            elevation: 4,
-            paddingTop: StatusBar.currentHeight || 20,
-          },
-          ios: {
-            ...shadows.sm
-          }
-        })
-      }
-    ]}>
-      <TouchableOpacity 
-        style={styles.closeButton} 
-        onPress={closeModal}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="arrow-back" size={24} color={colors.white} />
-      </TouchableOpacity>
-      <Text style={[styles.title, { color: colors.white }]}>
-        Select Contact
-      </Text>
-      <View style={{ width: 40 }} />  {/* Empty view for balanced header */}
-    </View>
-  );
-
-  // Contact picker button
+  // Render contact picker button
   const renderContactButton = () => (
     <TouchableOpacity 
       onPress={openContactSelector} 
@@ -502,19 +460,12 @@ const ContactSelector = ({ onSelectContact }) => {
         styles.contactButton,
         { 
           backgroundColor: colors.primary,
-          ...Platform.select({
-            android: {
-              elevation: 4
-            },
-            ios: {
-              ...shadows.sm
-            }
-          })
+          ...shadows.sm
         }
       ]}
       activeOpacity={0.8}
     >
-      <Ionicons name="people" size={24} color={colors.white} />
+      <Ionicons name="people" size={22} color={colors.white} />
     </TouchableOpacity>
   );
 
@@ -526,223 +477,283 @@ const ContactSelector = ({ onSelectContact }) => {
       {/* Contact Selector Modal */}
       <Modal
         visible={modalVisible}
-        animationType={Platform.OS === 'android' ? "slide" : "none"} // Use built-in animations for Android
-        transparent={false}
+        animationType="none"
+        transparent={true}
         onRequestClose={closeModal}
         statusBarTranslucent={Platform.OS === 'android'}
       >
-        <SafeAreaView style={{ 
-          flex: 1, 
-          backgroundColor: colors.background,
-          ...(Platform.OS === 'android' && { paddingTop: 0 })
-        }}>
-          <StatusBar 
-            barStyle="light-content" 
-            backgroundColor={colors.primary}
-            translucent={Platform.OS === 'android'}
-          />
+        <Animated.View 
+          style={[
+            styles.modalOverlay,
+            { 
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              opacity: fadeAnim
+            }
+          ]}
+        >
+          <TouchableWithoutFeedback onPress={closeModal}>
+            <View style={styles.modalBackground} />
+          </TouchableWithoutFeedback>
           
           <KeyboardAvoidingView 
-            style={{ flex: 1 }}
+            style={{ flex: 1, justifyContent: 'flex-end' }}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
             <Animated.View 
               style={[
-                styles.container, 
+                styles.modalContent,
                 { 
-                  backgroundColor: colors.background,
-                  opacity: fadeAnim
+                  backgroundColor: colors.card,
+                  transform: [{ translateY: slideAnim }]
                 }
               ]}
             >
+              {/* Handle for pulling up/down */}
+              <View style={styles.modalHandle}>
+                <View style={[styles.handle, { backgroundColor: isDarkMode ? '#555' : '#ccc' }]} />
+              </View>
+              
               {/* Header */}
-              {renderHeader()}
-
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: colors.dark }]}>
+                  Select Contact
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.closeButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]} 
+                  onPress={closeModal}
+                >
+                  <Ionicons name="close" size={20} color={colors.medium} />
+                </TouchableOpacity>
+              </View>
+              
               {/* Search Box */}
-              {renderSearchBar()}
-
-              {(!loading && contacts.length === 0) ? (
+              <View style={[styles.searchContainer, { backgroundColor: isDarkMode ? colors.lighter : '#f3f4f6' }]}>
+                <Ionicons name="search" size={20} color={colors.medium} />
+                <TextInput
+                  ref={searchInputRef}
+                  style={[styles.searchInput, { color: colors.dark }]}
+                  placeholder="Search contacts"
+                  placeholderTextColor={colors.medium}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  returnKeyType="search"
+                  autoCorrect={false}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Ionicons name="close-circle" size={18} color={colors.medium} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+              {/* Recent Contacts */}
+              {renderRecentContacts()}
+              
+              {/* Contacts List */}
+              {!loading && contacts.length === 0 ? (
                 renderEmptyState()
               ) : (
                 <FlatList
                   data={filteredContacts}
-                  keyExtractor={(item) => item.id || item.name}
+                  keyExtractor={(item) => item.id}
                   renderItem={renderContactItem}
                   contentContainerStyle={[
-                    styles.listContainer,
-                    filteredContacts.length === 0 && !loading && styles.emptyListContainer
+                    { flexGrow: 1 },
+                    filteredContacts.length === 0 && { justifyContent: 'center' }
                   ]}
                   ListEmptyComponent={!loading ? renderEmptyState : null}
                   ListFooterComponent={renderFooter}
                   initialNumToRender={10}
                   maxToRenderPerBatch={10}
-                  windowSize={5}
+                  windowSize={10}
                   removeClippedSubviews={Platform.OS === 'android'}
                   keyboardShouldPersistTaps="handled"
-                  ItemSeparatorComponent={ItemSeparator}
                   onEndReached={handleEndReached}
                   onEndReachedThreshold={0.3}
                 />
               )}
               
+              {/* Loading Indicator */}
               {loading && (
-                <View style={styles.loadingOverlay}>
-                  <View style={[styles.loadingContainer, { backgroundColor: colors.card }]}>
-                    <ActivityIndicator size="large" color={colors.primary} />
-                    <Text style={[styles.loadingText, { color: colors.medium }]}>
-                      Loading contacts...
-                    </Text>
-                  </View>
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={[styles.loadingText, { color: colors.medium }]}>
+                    Loading contacts...
+                  </Text>
                 </View>
               )}
             </Animated.View>
           </KeyboardAvoidingView>
-        </SafeAreaView>
+        </Animated.View>
       </Modal>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-  },
-  closeButton: {
-    padding: 8,
-    borderRadius: 20,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    padding: 0,
-  },
-  contactItem: {
-    flexDirection: 'row',
-    padding: 12,
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  contactButton: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
   },
-  contactImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 16,
-  },
-  contactInfo: {
+  modalOverlay: {
     flex: 1,
+    justifyContent: 'flex-end',
   },
-  contactName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  phoneContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  phoneLabel: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  contactPhone: {
-    fontSize: 14,
-  },
-  selectionIndicator: {
-    marginLeft: 8,
-  },
-  listContainer: {
-    paddingBottom: 20,
-    flexGrow: 1,
-  },
-  emptyListContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  loadingContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 20,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-  },
-  loadingOverlay: {
+  modalBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '80%',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  modalHandle: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  handle: {
+    width: 40,
+    height: 5,
+    borderRadius: 3,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
+  searchContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 32,
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 16,
-    marginTop: 16,
-    lineHeight: 22,
-  },
-  permissionButton: {
-    marginTop: 16,
-    paddingVertical: 10,
+    marginHorizontal: 20,
+    marginBottom: 16,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
-  contactButton: {
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 16,
+    padding: 0,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  footerLoader: {
-    flexDirection: 'row',
+  initials: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  contactImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  contactInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  contactPhone: {
+    fontSize: 14,
+  },
+  checkboxContainer: {
+    marginLeft: 10,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 16,
+  },
+  loadingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.8)',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+  },
+  footerLoader: {
+    alignItems: 'center',
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   loadingMoreText: {
     marginLeft: 8,
-    fontSize: 14,
-  }
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 12,
+  },
+  permissionButton: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  recentContactsContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  recentContactsList: {
+    paddingBottom: 10,
+  },
+  divider: {
+    height: 1,
+    marginTop: 10,
+  },
 });
 
 export default ContactSelector;
