@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, StatusBar } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, StatusBar, ActivityIndicator, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Contacts from 'expo-contacts';
 import styles from '../styles/LendingStyles';
 import BottomNavBar from './components/BottomNavBar';
 import { db, auth } from '../firebase';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, deleteDoc } from 'firebase/firestore';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Platform } from 'react-native';
-import { LineChart } from 'react-native-chart-kit';
-import { Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Theme from '../constants/Theme';
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import ContactSelector from './components/ContactSelector';
 
-function AddLoanForm({ onClose, onAdded }) {
+function AddLoanForm({ onClose, onAdded, saveLoanToFirestore }) {
   const [loanType, setLoanType] = useState('given');
   const [form, setForm] = useState({
     amount: '',
@@ -23,15 +21,17 @@ function AddLoanForm({ onClose, onAdded }) {
     lenderNumber: '', // added for phone number
     description: '',
     date: new Date().toISOString().split('T')[0],
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to 30 days from today
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  const [isSaving, setSaving] = useState(false);
   
   // Get theme colors
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
   const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
+  const { showActionSheetWithOptions } = useActionSheet();
 
   // Handle selected contact from ContactSelector
   const handleContactSelect = (contact) => {
@@ -46,25 +46,37 @@ function AddLoanForm({ onClose, onAdded }) {
       Alert.alert('Validation Error', 'Amount and Lender are required fields.');
       return;
     }
-    const user = auth.currentUser;
-    if (!user) {
-      Alert.alert('Error', 'You must be logged in to save a loan.');
-      return;
-    }
-    const loanData = { ...form, contact: form.lender, loanType };
-    const success = await saveLoanToFirestore(loanData);
-    if (success) {
-      Alert.alert('Success', 'Loan details saved successfully!');
-      setForm({
-        amount: '',
-        lender: '',
-        lenderNumber: '',
-        description: '',
-        date: new Date().toISOString().split('T')[0],
-        dueDate: new Date().toISOString().split('T')[0],
-      });
-      onClose();
-      if (onAdded) onAdded();
+    
+    try {
+      setSaving(true);
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in to save a loan.');
+        return;
+      }
+      
+      const loanData = { ...form, contact: form.lender, loanType };
+      const success = await saveLoanToFirestore(loanData);
+      
+      if (success) {
+        Alert.alert('Success', 'Loan details saved successfully!');
+        setForm({
+          amount: '',
+          lender: '',
+          lenderNumber: '',
+          description: '',
+          date: new Date().toISOString().split('T')[0],
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        });
+        onClose();
+        // Call onAdded callback to refresh data in the parent component
+        if (onAdded) onAdded();
+      }
+    } catch (error) {
+      console.error('Error saving loan:', error);
+      Alert.alert('Error', 'Failed to save loan. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -352,7 +364,7 @@ function AddLoanForm({ onClose, onAdded }) {
           <TouchableOpacity 
             style={{ 
               flex: 1, 
-              backgroundColor: colors.primary, 
+              backgroundColor: isSaving ? colors.medium : colors.primary, 
               padding: 16, 
               borderRadius: 8, 
               alignItems: 'center', 
@@ -361,13 +373,256 @@ function AddLoanForm({ onClose, onAdded }) {
               ...shadows.sm
             }} 
             onPress={handleSubmit}
+            disabled={isSaving}
           >
-            <Ionicons name="checkmark-circle-outline" size={22} color={colors.white} style={{ marginRight: 8 }} />
-            <Text style={{ color: colors.white, fontWeight: 'bold', fontSize: 18 }}>Save</Text>
+            {isSaving ? (
+              <>
+                <ActivityIndicator size="small" color={colors.white} style={{ marginRight: 8 }} />
+                <Text style={{ color: colors.white, fontWeight: 'bold', fontSize: 18 }}>Saving...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={22} color={colors.white} style={{ marginRight: 8 }} />
+                <Text style={{ color: colors.white, fontWeight: 'bold', fontSize: 18 }}>Save</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+// Add TransactionHistory component
+function TransactionHistory({ contact, transactions, onClose, colors, shadows }) {
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateStr).toLocaleDateString('en-IN', options);
+  };
+  
+  // Add a state for tracking deleted items
+  const [pendingDeletion, setPendingDeletion] = useState(null);
+  
+  // Function to handle loan deletion
+  const handleDeleteLoan = async (loanId) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        Alert.alert('Error', 'User not authenticated.');
+        return;
+      }
+      
+      // Reference to the loan document
+      const loanRef = doc(db, 'loans', loanId);
+      
+      // Delete the document
+      await deleteDoc(loanRef);
+      
+      // Show success message
+      Alert.alert('Success', 'Loan deleted successfully');
+      
+      // Refresh the parent component's data
+      // We use a callback approach since we don't have direct access to the loan list
+      if (onClose) {
+        // Close transaction history modal which will trigger a refresh
+        onClose(true);
+      }
+    } catch (error) {
+      console.error('Error deleting loan:', error);
+      Alert.alert('Error', 'Failed to delete loan. Please try again.');
+    }
+  };
+  
+  // Function to confirm deletion
+  const confirmDelete = (id) => {
+    setPendingDeletion(null);
+    Alert.alert(
+      'Delete Loan',
+      'Are you sure you want to delete this loan? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => handleDeleteLoan(id)
+        }
+      ]
+    );
+  };
+
+  // Sort transactions by date, newest first
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    return new Date(b.date) - new Date(a.date);
+  });
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar barStyle={colors.isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+      
+      {/* Header */}
+      <View style={{ 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: 24,
+        paddingTop: 46,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.isDarkMode ? colors.lighter : '#e5e7eb',
+      }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.dark }}>
+            Transactions
+          </Text>
+          <Text style={{ fontSize: 16, color: colors.medium, marginTop: 4 }}>
+            {contact}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => onClose()}
+          style={{
+            padding: 8,
+            borderRadius: 8,
+            backgroundColor: colors.isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2'
+          }}
+        >
+          <Ionicons name="close-circle-outline" size={24} color={colors.error} />
+        </TouchableOpacity>
+      </View>
+      
+      {/* Transaction Summary */}
+      <View style={{
+        backgroundColor: colors.card,
+        margin: 16,
+        borderRadius: 12,
+        padding: 16,
+        ...shadows.sm
+      }}>
+        <Text style={{ fontSize: 16, color: colors.medium, marginBottom: 8 }}>
+          Total Transactions: <Text style={{ fontWeight: 'bold', color: colors.dark }}>{transactions.length}</Text>
+        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View>
+            <Text style={{ fontSize: 14, color: colors.medium }}>
+              Given
+            </Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.success }}>
+              ₹{transactions
+                .filter(t => t.loanType === 'given')
+                .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)
+                .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </Text>
+          </View>
+          <View>
+            <Text style={{ fontSize: 14, color: colors.medium }}>
+              Taken
+            </Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.error }}>
+              ₹{transactions
+                .filter(t => t.loanType === 'taken')
+                .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)
+                .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </Text>
+          </View>
+          <View>
+            <Text style={{ fontSize: 14, color: colors.medium }}>
+              Net Balance
+            </Text>
+            <Text style={{ 
+              fontSize: 18, 
+              fontWeight: 'bold', 
+              color: transactions[0]?.pendingAmount > 0 ? colors.success : 
+                    transactions[0]?.pendingAmount < 0 ? colors.error : colors.medium 
+            }}>
+              ₹{Math.abs(transactions[0]?.pendingAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </Text>
+          </View>
+        </View>
+      </View>
+      
+      {/* Transactions List */}
+      <FlatList
+        data={sortedTransactions}
+        keyExtractor={(item, index) => item.id || index.toString()}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        ListEmptyComponent={() => (
+          <View style={{ padding: 24, alignItems: 'center' }}>
+            <Text style={{ color: colors.medium }}>No transactions found</Text>
+          </View>
+        )}
+        renderItem={({ item, index }) => (
+          <View style={{ 
+            backgroundColor: index % 2 === 0 ? colors.card : colors.isDarkMode ? colors.lighter : '#f8fafc',
+            padding: 16,
+            marginHorizontal: 16,
+            marginBottom: 8,
+            borderRadius: 12,
+            ...shadows.xs
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons 
+                  name={item.loanType === 'given' ? 'arrow-up-circle' : 'arrow-down-circle'} 
+                  size={24} 
+                  color={item.loanType === 'given' ? colors.success : colors.error} 
+                  style={{ marginRight: 8 }} 
+                />
+                <Text style={{ 
+                  fontSize: 18, 
+                  fontWeight: 'bold', 
+                  color: item.loanType === 'given' ? colors.success : colors.error 
+                }}>
+                  ₹{parseFloat(item.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+              <Text style={{ color: colors.medium, fontSize: 14 }}>
+                {formatDate(item.date)}
+              </Text>
+            </View>
+            
+            {item.description ? (
+              <Text style={{ color: colors.dark, marginBottom: 8 }}>
+                {item.description}
+              </Text>
+            ) : null}
+            
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+              <Text style={{ fontSize: 14, color: colors.medium }}>
+                Due: {formatDate(item.dueDate)}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ 
+                  fontSize: 14, 
+                  fontWeight: 'bold',
+                  marginRight: 10,
+                  color: new Date(item.dueDate) < new Date() && item.status !== 'settled' 
+                    ? colors.error 
+                    : colors.medium 
+                }}>
+                  {item.status === 'settled' ? 'Settled' : 
+                    new Date(item.dueDate) < new Date() ? 'Overdue' : 'Active'}
+                </Text>
+                
+                {/* Delete button */}
+                <TouchableOpacity 
+                  onPress={() => confirmDelete(item.id)}
+                  style={{
+                    padding: 4,
+                    borderRadius: 4,
+                    backgroundColor: colors.isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2'
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={16} color={colors.error} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      />
+    </View>
   );
 }
 
@@ -387,11 +642,15 @@ export default function Lending() {
   const [loanSummary, setLoanSummary] = useState({});
   const [loansLoading, setLoansLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [loans, setLoans] = useState([]);
+  const [showTransactionHistory, setShowTransactionHistory] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
   
   // Get theme colors
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
   const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
+  const { showActionSheetWithOptions } = useActionSheet();
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -474,17 +733,22 @@ export default function Lending() {
       } else if (loan.loanType === 'taken') {
         pendingAmount -= thisAmount;
       }
+      
+      // Store loan data with timestamps and status
       await addDoc(collection(db, 'loans'), {
         ...loan,
         amount: thisAmount, // Store the original amount (not negative)
         userId: user.uid,
         createdAt: new Date().toISOString(),
         pendingAmount,
+        status: 'active', // Can be used for marking loans as 'settled' later
+        lastUpdated: new Date().toISOString()
       });
+      
       return true;
     } catch (error) {
       console.error('Error saving loan:', error);
-      Alert.alert('Error', 'Failed to save loan.');
+      Alert.alert('Error', 'Failed to save loan details.');
       return false;
     }
   };
@@ -511,10 +775,13 @@ export default function Lending() {
   useEffect(() => {
     const fetchAndSummarizeLoans = async () => {
       setLoansLoading(true);
-      const loans = await fetchLoansFromFirestore();
+      const fetchedLoans = await fetchLoansFromFirestore();
+      
+      setLoans(fetchedLoans);
+      
       // Group by contact, keep the latest (by createdAt) pendingAmount for each contact
       const summary = {};
-      loans.forEach(loan => {
+      fetchedLoans.forEach(loan => {
         const contact = loan.contact || 'Unknown';
         const createdAt = loan.createdAt || '';
         if (!summary[contact] || (createdAt > summary[contact].createdAt)) {
@@ -529,37 +796,34 @@ export default function Lending() {
       setLoanSummary(flatSummary);
       setLoansLoading(false);
     };
+    
     fetchAndSummarizeLoans();
   }, []);
 
-  // Calculate monthly pending amount for the last 12 months
-  const now = new Date();
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-    return {
-      key: `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`,
-      label: d.toLocaleString('default', { month: 'short' })
-    };
-  });
-  const monthlyPending = months.map(month => {
-    // For each contact, get the latest loan for that month
-    // (You may want to optimize this if you have a lot of data)
-    // For now, just use the summary value for the latest month <= this month
-    // This is a simple approximation
-    let sum = 0;
-    Object.entries(loanSummary).forEach(([contact, _]) => {
-      // Find all loans for this contact in this month
-      // (You may want to fetch all loans and process here for accuracy)
-      sum += 0; // Placeholder, as loanSummary only has current pending
+  // Function to refresh loans data
+  const refreshLoans = async () => {
+    setLoansLoading(true);
+    const fetchedLoans = await fetchLoansFromFirestore();
+    setLoans(fetchedLoans);
+    
+    // Update summary data
+    const summary = {};
+    fetchedLoans.forEach(loan => {
+      const contact = loan.contact || 'Unknown';
+      const createdAt = loan.createdAt || '';
+      if (!summary[contact] || (createdAt > summary[contact].createdAt)) {
+        summary[contact] = { pendingAmount: loan.pendingAmount || 0, createdAt };
+      }
     });
-    // Instead, sum all loans up to this month
-    // (You may want to fetch all loans and process here for accuracy)
-    return sum;
-  });
-  // If you have all loans, you can process them for accurate monthly pending
-  // For now, just show the current total for all months as a placeholder
-  const currentPending = Object.values(loanSummary).reduce((sum, amt) => sum + (amt || 0), 0);
-  const monthlyPendingData = Array(12).fill(currentPending);
+    
+    const flatSummary = {};
+    Object.entries(summary).forEach(([contact, val]) => {
+      flatSummary[contact] = val.pendingAmount;
+    });
+    
+    setLoanSummary(flatSummary);
+    setLoansLoading(false);
+  };
 
   const handleSubmit = async () => {
     console.log('Save Loan button pressed');
@@ -635,18 +899,72 @@ export default function Lending() {
         {/* Total Pending Amount Card */}
         <View style={{
           backgroundColor: colors.card,
-          borderRadius: 14,
-          padding: 20,
-          marginBottom: 18,
-          alignItems: 'center',
-          ...shadows.sm
+          borderRadius: 18,
+          padding: 24,
+          marginBottom: 24,
+          marginHorizontal: 4
         }}>
-          <Text style={{ fontSize: 16, color: colors.medium, marginBottom: 6 }}>
-            Total Pending Amount
-          </Text>
-          <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary }}>
-            ₹{Object.values(loanSummary).reduce((sum, amt) => sum + (amt || 0), 0).toLocaleString('en-IN')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View>
+              <Text style={{ fontSize: 16, color: colors.medium, marginBottom: 8 }}>
+                Total Pending Amount
+              </Text>
+              <Text style={{ 
+                fontSize: 32, 
+                fontWeight: 'bold', 
+                color: colors.primary,
+                letterSpacing: 0.5 
+              }}>
+                ₹{Object.values(loanSummary).reduce((sum, amt) => sum + (amt || 0), 0).toLocaleString('en-IN')}
+              </Text>
+            </View>
+            <View style={{
+              width: 60,
+              height: 60,
+              borderRadius: 30,
+              backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }}>
+              <Ionicons 
+                name="wallet-outline" 
+                size={28} 
+                color={colors.primary} 
+              />
+            </View>
+          </View>
+          
+          {/* Add a summary line */}
+          <View style={{ 
+            flexDirection: 'row', 
+            marginTop: 16, 
+            paddingTop: 16,
+            borderTopWidth: 1,
+            borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e5e7eb'
+          }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="arrow-up-circle" size={18} color={colors.success} style={{ marginRight: 6 }} />
+              <Text style={{ color: colors.medium, fontSize: 14 }}>
+                Given: <Text style={{ fontWeight: 'bold', color: colors.success }}>
+                  ₹{Object.values(loanSummary)
+                    .filter(amt => amt > 0)
+                    .reduce((sum, amt) => sum + amt, 0)
+                    .toLocaleString('en-IN')}
+                </Text>
+              </Text>
+            </View>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="arrow-down-circle" size={18} color={colors.error} style={{ marginRight: 6 }} />
+              <Text style={{ color: colors.medium, fontSize: 14 }}>
+                Taken: <Text style={{ fontWeight: 'bold', color: colors.error }}>
+                  ₹{Math.abs(Object.values(loanSummary)
+                    .filter(amt => amt < 0)
+                    .reduce((sum, amt) => sum + amt, 0))
+                    .toLocaleString('en-IN')}
+                </Text>
+              </Text>
+            </View>
+          </View>
         </View>
         
         {/* Loan summary section */}
@@ -726,17 +1044,24 @@ export default function Lending() {
               
               {/* Table Rows */}
               {Object.entries(loanSummary).map(([contact, pending], idx) => (
-                <View key={contact + idx} style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
-                  borderBottomWidth: 1, 
-                  borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6', 
-                  backgroundColor: idx % 2 === 0 
-                    ? colors.card 
-                    : isDarkMode ? 'rgba(99, 102, 241, 0.08)' : '#f8faff', 
-                  paddingVertical: 16, 
-                  paddingHorizontal: 18 
-                }}>
+                <TouchableOpacity 
+                  key={contact + idx} 
+                  style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    borderBottomWidth: 1, 
+                    borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f3f4f6', 
+                    backgroundColor: idx % 2 === 0 
+                      ? colors.card 
+                      : isDarkMode ? 'rgba(99, 102, 241, 0.08)' : '#f8faff', 
+                    paddingVertical: 16, 
+                    paddingHorizontal: 18 
+                  }}
+                  onPress={() => {
+                    setSelectedContact(contact);
+                    setShowTransactionHistory(true);
+                  }}
+                >
                   <Ionicons 
                     name="person-circle" 
                     size={28} 
@@ -762,63 +1087,39 @@ export default function Lending() {
                   }}>
                     ₹{pending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </Text>
-                </View>
+                </TouchableOpacity>
               ))}
             </View>
           )}
         </View>
-        
-        {/* Line Graph: Pending Amount per Month */}
-        <Text style={{ 
-          fontSize: 18, 
-          fontWeight: '600', 
-          marginBottom: 10, 
-          color: colors.dark 
-        }}>
-          Pending Amount (Last 12 Months)
-        </Text>
-        
-        <LineChart
-          data={{
-            labels: months.map(m => m.label),
-            datasets: [
-              {
-                data: [0, ...monthlyPendingData],
-                color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-                strokeWidth: 2,
-              },
-            ],
-          }}
-          width={Dimensions.get('window').width - 40}
-          height={200}
-          yAxisLabel="₹"
-          chartConfig={{
-            backgroundColor: colors.card,
-            backgroundGradientFrom: colors.card,
-            backgroundGradientTo: colors.card,
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(${isDarkMode ? '255, 255, 255' : '31, 41, 55'}, ${opacity})`,
-            style: { borderRadius: 16 },
-            propsForDots: {
-              r: '5',
-              strokeWidth: '2',
-              stroke: colors.primary,
-            },
-          }}
-          bezier
-          style={{ 
-            marginVertical: 12, 
-            borderRadius: 12,
-            ...shadows.sm
-          }}
-        />
       </ScrollView>
       
       {/* Add Loan Modal */}
       <Modal visible={showAddModal} animationType="slide" onRequestClose={() => setShowAddModal(false)}>
-        <AddLoanForm onClose={() => setShowAddModal(false)} onAdded={fetchLoansFromFirestore} />
+        <AddLoanForm 
+          onClose={() => setShowAddModal(false)} 
+          onAdded={refreshLoans} 
+          saveLoanToFirestore={saveLoanToFirestore} 
+        />
       </Modal>
+      
+      {/* Transaction History Modal */}
+      <Modal visible={showTransactionHistory} animationType="slide" onRequestClose={() => setShowTransactionHistory(false)}>
+        <TransactionHistory 
+          contact={selectedContact} 
+          transactions={loans.filter(loan => loan.contact === selectedContact)} 
+          onClose={(refreshNeeded = false) => {
+            setShowTransactionHistory(false);
+            if (refreshNeeded) {
+              // Refresh the loans data when a transaction is deleted
+              refreshLoans();
+            }
+          }} 
+          colors={colors} 
+          shadows={shadows} 
+        />
+      </Modal>
+      
       <BottomNavBar />
     </>
   );
