@@ -12,6 +12,8 @@ import { LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import Theme from '../constants/Theme';
+import { useActionSheet } from '@expo/react-native-action-sheet';
+import ContactSelector from './components/ContactSelector';
 
 function AddLoanForm({ onClose, onAdded }) {
   const [loanType, setLoanType] = useState('given');
@@ -30,6 +32,12 @@ function AddLoanForm({ onClose, onAdded }) {
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
   const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
+
+  // Handle selected contact from ContactSelector
+  const handleContactSelect = (contact) => {
+    handleChange('lender', contact.name);
+    handleChange('lenderNumber', contact.phoneNumber);
+  };
 
   const handleChange = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -65,25 +73,37 @@ function AddLoanForm({ onClose, onAdded }) {
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status === 'granted') {
-        const { data } = await Contacts.getContactsAsync({
-          fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
-          sort: Contacts.SortTypes.FirstName,
-        });
+        let allContacts = [];
+        let pageOffset = 0;
+        let hasNextPage = true;
+        const pageSize = 100;
+        while (hasNextPage) {
+          const { data, hasNextPage: nextPage } = await Contacts.getContactsAsync({
+            fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+            sort: Contacts.SortTypes.FirstName,
+            pageSize,
+            pageOffset,
+          });
+          allContacts = allContacts.concat(data);
+          hasNextPage = nextPage;
+          pageOffset += pageSize;
+        }
+        const data = allContacts.filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0);
         if (data.length > 0) {
-          const contactOptions = data
-            .filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0)
-            .map(contact => {
-              const number = contact.phoneNumbers[0]?.number || '';
-              return {
-                text: `${contact.name} (${number})`,
-                onPress: () => {
-                  handleChange('lender', contact.name);
-                  handleChange('lenderNumber', number);
-                },
-              };
-            });
-          contactOptions.push({ text: 'Cancel', style: 'cancel' });
-          Alert.alert('Select Lender', 'Choose a lender:', contactOptions);
+          const options = data.map(contact => `${contact.name} (${contact.phoneNumbers[0]?.number || ''})`);
+          options.push('Cancel');
+          showActionSheetWithOptions(
+            {
+              options,
+              cancelButtonIndex: options.length - 1,
+            },
+            (buttonIndex) => {
+              if (buttonIndex === undefined || buttonIndex === options.length - 1) return;
+              const selected = data[buttonIndex];
+              handleChange('lender', selected.name);
+              handleChange('lenderNumber', selected.phoneNumbers[0]?.number || '');
+            }
+          );
         } else {
           Alert.alert('No Contacts', 'No contacts found on your device.');
         }
@@ -222,9 +242,10 @@ function AddLoanForm({ onClose, onAdded }) {
             onChangeText={(text) => handleChange('lender', text)}
             placeholderTextColor={isDarkMode ? colors.medium : "#aaa"}
           />
-          <TouchableOpacity onPress={selectContact} style={{ marginLeft: 10, padding: 8 }}>
-            <Ionicons name="person-circle-outline" size={28} color={colors.primary} />
-          </TouchableOpacity>
+          {/* Place ContactSelector component here */}
+          <View style={{ marginLeft: 10 }}>
+            <ContactSelector onSelectContact={handleContactSelect} />
+          </View>
         </View>
 
         {/* Phone Number Field */}
@@ -381,25 +402,37 @@ export default function Lending() {
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status === 'granted') {
-        const { data } = await Contacts.getContactsAsync({
-          fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
-          sort: Contacts.SortTypes.FirstName,
-        });
+        let allContacts = [];
+        let pageOffset = 0;
+        let hasNextPage = true;
+        const pageSize = 100;
+        while (hasNextPage) {
+          const { data, hasNextPage: nextPage } = await Contacts.getContactsAsync({
+            fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+            sort: Contacts.SortTypes.FirstName,
+            pageSize,
+            pageOffset,
+          });
+          allContacts = allContacts.concat(data);
+          hasNextPage = nextPage;
+          pageOffset += pageSize;
+        }
+        const data = allContacts.filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0);
         if (data.length > 0) {
-          const contactOptions = data
-            .filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0)
-            .map(contact => {
-              const number = contact.phoneNumbers[0]?.number || '';
-              return {
-                text: `${contact.name} (${number})`,
-                onPress: () => {
-                  handleChange('lender', contact.name);
-                  handleChange('lenderNumber', number);
-                },
-              };
-            });
-          contactOptions.push({ text: 'Cancel', style: 'cancel' });
-          Alert.alert('Select Lender', 'Choose a lender:', contactOptions);
+          const options = data.map(contact => `${contact.name} (${contact.phoneNumbers[0]?.number || ''})`);
+          options.push('Cancel');
+          showActionSheetWithOptions(
+            {
+              options,
+              cancelButtonIndex: options.length - 1,
+            },
+            (buttonIndex) => {
+              if (buttonIndex === undefined || buttonIndex === options.length - 1) return;
+              const selected = data[buttonIndex];
+              handleChange('lender', selected.name);
+              handleChange('lenderNumber', selected.phoneNumbers[0]?.number || '');
+            }
+          );
         } else {
           Alert.alert('No Contacts', 'No contacts found on your device.');
         }
@@ -567,7 +600,7 @@ export default function Lending() {
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       <ScrollView 
         style={[styles.container, { backgroundColor: colors.background }]} 
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
       >
         <View style={{ 
           flexDirection: 'row', 

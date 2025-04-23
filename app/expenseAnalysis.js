@@ -16,6 +16,7 @@ import BottomNavBar from './components/BottomNavBar';
 import LoadingState from './components/LoadingState';
 import { useTheme } from '../contexts/ThemeContext';
 import { useError } from '../contexts/ErrorContext';
+import { useBudgets } from '../contexts/BudgetContext';
 import Theme from '../constants/Theme';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -40,6 +41,14 @@ const ExpenseAnalysis = () => {
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
   const { setError } = useError();
+  const { budgets, getMonthlyBudgets, getBudgetForCategory, getTotalBudgetForMonth } = useBudgets();
+  const [budgetInsights, setBudgetInsights] = useState({
+    totalBudget: 0,
+    budgetPerformance: 0,
+    categoriesComparison: [],
+    overBudgetCategories: [],
+    underBudgetCategories: []
+  });
 
   useEffect(() => {
     const fetchExpenses = async () => {
@@ -67,6 +76,9 @@ const ExpenseAnalysis = () => {
 
         // Process data for both views
         processData(data);
+        
+        // Process budget insights
+        processBudgetInsights(data);
       } catch (e) {
         console.error('Error fetching expenses:', e);
         setError('Failed to load expense analysis. Please try again later.');
@@ -170,6 +182,106 @@ const ExpenseAnalysis = () => {
         total: yearlyTotal,
         categories: yearlyCategories
       }
+    });
+  };
+
+  const processBudgetInsights = (expenses) => {
+    // Get current date info
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // Adding 1 because getMonth() is 0-indexed
+    
+    // Get monthly budgets
+    const monthlyBudgets = getMonthlyBudgets(currentYear, currentMonth);
+    
+    // Calculate total budget
+    const totalBudget = getTotalBudgetForMonth(currentYear, currentMonth);
+    
+    // Get expenses for current month
+    const monthStart = new Date(currentYear, currentMonth - 1, 1); // Month is 0-indexed in Date constructor
+    const monthEnd = new Date(currentYear, currentMonth, 0);
+    
+    const currentMonthExpenses = expenses.filter(exp => 
+      exp.date >= monthStart && exp.date <= monthEnd
+    );
+    
+    // Calculate total expenses for the month
+    const totalExpenses = currentMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    // Calculate budget performance (percentage of budget used)
+    const budgetPerformance = totalBudget > 0 ? (totalExpenses / totalBudget) * 100 : 0;
+    
+    // Analyze by category
+    const expensesByCategory = {};
+    currentMonthExpenses.forEach(exp => {
+      if (exp.category) {
+        if (!expensesByCategory[exp.category]) {
+          expensesByCategory[exp.category] = 0;
+        }
+        expensesByCategory[exp.category] += exp.amount;
+      }
+    });
+    
+    // Compare expenses against budget by category
+    const categoriesComparison = [];
+    const overBudgetCategories = [];
+    const underBudgetCategories = [];
+    
+    Object.entries(expensesByCategory).forEach(([category, amount]) => {
+      const budget = getBudgetForCategory(category, currentYear, currentMonth);
+      
+      if (budget) {
+        const budgetAmount = Number(budget.amount);
+        const percentUsed = (amount / budgetAmount) * 100;
+        const comparison = {
+          category,
+          budgetAmount,
+          actualAmount: amount,
+          percentUsed,
+          remaining: budgetAmount - amount,
+          status: percentUsed > 100 ? 'over' : percentUsed > 80 ? 'warning' : 'good'
+        };
+        
+        categoriesComparison.push(comparison);
+        
+        if (percentUsed > 100) {
+          overBudgetCategories.push(comparison);
+        } else {
+          underBudgetCategories.push(comparison);
+        }
+      } else {
+        // Category without a budget
+        categoriesComparison.push({
+          category,
+          budgetAmount: 0,
+          actualAmount: amount,
+          percentUsed: Infinity,
+          remaining: -amount,
+          status: 'noBudget'
+        });
+        
+        overBudgetCategories.push({
+          category,
+          budgetAmount: 0,
+          actualAmount: amount,
+          percentUsed: Infinity,
+          remaining: -amount,
+          status: 'noBudget'
+        });
+      }
+    });
+    
+    // Sort by percentage used (highest first)
+    categoriesComparison.sort((a, b) => b.percentUsed - a.percentUsed);
+    overBudgetCategories.sort((a, b) => b.percentUsed - a.percentUsed);
+    underBudgetCategories.sort((a, b) => b.percentUsed - a.percentUsed);
+    
+    setBudgetInsights({
+      totalBudget,
+      budgetPerformance,
+      categoriesComparison,
+      overBudgetCategories,
+      underBudgetCategories
     });
   };
 
@@ -376,6 +488,131 @@ const ExpenseAnalysis = () => {
                 )}
               </View>
             </View>
+            
+            {/* Budget Insights Section - Only show for monthly view */}
+            {viewMode === 'monthly' && (
+              <View style={[styles.budgetInsightsCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
+                <Text style={[styles.cardLabel, { color: colors.medium }]}>Budget Insights</Text>
+                
+                {budgetInsights.totalBudget > 0 ? (
+                  <>
+                    <View style={styles.budgetOverview}>
+                      <View style={styles.budgetInfoColumn}>
+                        <Text style={[styles.budgetLabel, { color: colors.medium }]}>Monthly Budget</Text>
+                        <Text style={[styles.budgetAmount, { color: colors.primary }]}>
+                          ₹{new Intl.NumberFormat('en-IN').format(budgetInsights.totalBudget)}
+                        </Text>
+                      </View>
+                      <View style={styles.budgetInfoColumn}>
+                        <Text style={[styles.budgetLabel, { color: colors.medium }]}>Used</Text>
+                        <Text style={[styles.budgetAmount, { 
+                          color: budgetInsights.budgetPerformance > 100 ? colors.error : 
+                                 budgetInsights.budgetPerformance > 80 ? '#f59e0b' : colors.success 
+                        }]}>
+                          {budgetInsights.budgetPerformance.toFixed(0)}%
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    {/* Budget progress bar */}
+                    <View style={[styles.budgetProgressContainer, { backgroundColor: `${colors.primary}15` }]}>
+                      <View 
+                        style={[
+                          styles.budgetProgressFill, 
+                          { 
+                            width: `${Math.min(budgetInsights.budgetPerformance, 100)}%`,
+                            backgroundColor: budgetInsights.budgetPerformance > 100 ? colors.error : 
+                                            budgetInsights.budgetPerformance > 80 ? '#f59e0b' : colors.success
+                          }
+                        ]} 
+                      />
+                    </View>
+                    
+                    {/* Categories over budget */}
+                    {budgetInsights.overBudgetCategories.length > 0 && (
+                      <View style={styles.budgetCategoriesSection}>
+                        <Text style={[styles.budgetCategoryTitle, { color: colors.error }]}>
+                          Categories Over Budget
+                        </Text>
+                        
+                        {budgetInsights.overBudgetCategories.map((item, index) => (
+                          <View key={`over-${item.category}`} style={styles.budgetCategoryItem}>
+                            <View style={styles.budgetCategoryHeader}>
+                              <View style={[styles.categoryIcon, { 
+                                backgroundColor: `${colors.error}20`,
+                                marginRight: 10
+                              }]}>
+                                <Ionicons name={getCategoryIcon(item.category)} size={18} color={colors.error} />
+                              </View>
+                              <View style={styles.budgetCategoryInfo}>
+                                <Text style={[styles.budgetCategoryName, { color: colors.dark }]}>
+                                  {item.category}
+                                </Text>
+                                <View style={styles.budgetAmountsRow}>
+                                  <Text style={[styles.budgetCategoryAmount, { color: colors.medium }]}>
+                                    ₹{new Intl.NumberFormat('en-IN').format(item.actualAmount)} / 
+                                    {item.budgetAmount === 0 ? ' No Budget' : 
+                                      ` ₹${new Intl.NumberFormat('en-IN').format(item.budgetAmount)}`}
+                                  </Text>
+                                  <Text style={[styles.budgetCategoryOverage, { color: colors.error }]}>
+                                    {item.budgetAmount === 0 ? '' : 
+                                      `+${(item.percentUsed - 100).toFixed(0)}%`}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    
+                    {/* Categories under budget */}
+                    {budgetInsights.underBudgetCategories.length > 0 && (
+                      <View style={styles.budgetCategoriesSection}>
+                        <Text style={[styles.budgetCategoryTitle, { color: colors.success }]}>
+                          Categories Within Budget
+                        </Text>
+                        
+                        {budgetInsights.underBudgetCategories.map((item, index) => (
+                          <View key={`under-${item.category}`} style={styles.budgetCategoryItem}>
+                            <View style={styles.budgetCategoryHeader}>
+                              <View style={[styles.categoryIcon, { 
+                                backgroundColor: `${colors.success}20`,
+                                marginRight: 10
+                              }]}>
+                                <Ionicons name={getCategoryIcon(item.category)} size={18} color={colors.success} />
+                              </View>
+                              <View style={styles.budgetCategoryInfo}>
+                                <Text style={[styles.budgetCategoryName, { color: colors.dark }]}>
+                                  {item.category}
+                                </Text>
+                                <View style={styles.budgetAmountsRow}>
+                                  <Text style={[styles.budgetCategoryAmount, { color: colors.medium }]}>
+                                    ₹{new Intl.NumberFormat('en-IN').format(item.actualAmount)} / 
+                                    ₹{new Intl.NumberFormat('en-IN').format(item.budgetAmount)}
+                                  </Text>
+                                  <Text style={[styles.budgetCategoryRemaining, { color: colors.success }]}>
+                                    ₹{new Intl.NumberFormat('en-IN').format(item.remaining)} left
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.noBudgetContainer}>
+                    <Ionicons name="wallet-outline" size={48} color={colors.primary} style={styles.noBudgetIcon} />
+                    <Text style={[styles.noBudgetTitle, { color: colors.dark }]}>No budgets set</Text>
+                    <Text style={[styles.noBudgetDescription, { color: colors.medium }]}>
+                      Create budgets in the Budget section to see how your spending compares to your financial goals.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -558,7 +795,101 @@ const styles = StyleSheet.create({
   percentageFill: {
     height: '100%',
     borderRadius: 2,
-  }
+  },
+  budgetInsightsCard: {
+    borderRadius: 16,
+    margin: 16,
+    marginTop: 0,
+    padding: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 32,
+  },
+  budgetOverview: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  budgetInfoColumn: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  budgetLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  budgetAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  budgetProgressContainer: {
+    height: 8,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  budgetProgressFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  budgetCategoriesSection: {
+    marginBottom: 16,
+  },
+  budgetCategoryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  budgetCategoryItem: {
+    marginBottom: 12,
+  },
+  budgetCategoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  budgetCategoryInfo: {
+    flex: 1,
+  },
+  budgetCategoryName: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  budgetAmountsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  budgetCategoryAmount: {
+    fontSize: 13,
+  },
+  budgetCategoryOverage: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  budgetCategoryRemaining: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  noBudgetContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noBudgetIcon: {
+    marginBottom: 12,
+  },
+  noBudgetTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  noBudgetDescription: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
 });
 
 export default ExpenseAnalysis;
