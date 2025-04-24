@@ -80,6 +80,7 @@ export default function Settings() {
     try {
       // If enabling lock, check device compatibility first
       if (value) {
+        // Check if device has biometric hardware
         const compatible = await LocalAuthentication.hasHardwareAsync();
         if (!compatible) {
           Alert.alert(
@@ -89,6 +90,7 @@ export default function Settings() {
           return;
         }
         
+        // Check if user has enrolled biometrics
         const enrolled = await LocalAuthentication.isEnrolledAsync();
         if (!enrolled) {
           Alert.alert(
@@ -97,10 +99,33 @@ export default function Settings() {
           );
           return;
         }
+        
+        // Test the authentication to ensure it's working before enabling
+        const authTest = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to enable app lock',
+          fallbackLabel: 'Use passcode',
+          disableDeviceFallback: false,
+        });
+        
+        if (!authTest.success) {
+          // User cancelled or authentication failed
+          Alert.alert(
+            'Authentication Failed',
+            'Could not verify biometrics. App lock was not enabled.'
+          );
+          return;
+        }
       }
       
+      // If we get here, either disabling or successfully authenticated
       await AsyncStorage.setItem('appLockEnabled', value ? 'true' : 'false');
       setLockEnabled(value);
+      
+      // Show confirmation to user
+      Alert.alert(
+        value ? 'Biometric Lock Enabled' : 'Biometric Lock Disabled',
+        value ? 'Your app is now protected with biometric authentication.' : 'Biometric authentication has been disabled.'
+      );
     } catch (err) {
       console.log('Error toggling app lock:', err);
       Alert.alert('Error', 'Failed to toggle app lock. Please try again.');
