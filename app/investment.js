@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from './components/BottomNavBar';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -688,6 +688,9 @@ export default function Investment() {
   const [refresh, setRefresh] = useState(false); // Add a refresh state
   const [totalProfit, setTotalProfit] = useState(0);
   const [totalProfitPercentage, setTotalProfitPercentage] = useState(0);
+  // Add state for year range selection
+  const [yearRangeSpan, setYearRangeSpan] = useState(7); // Default: 7 years
+  const [yearRangeEnd, setYearRangeEnd] = useState(new Date().getFullYear()); // Default: current year
 
   // Get theme colors
   const { isDarkMode } = useTheme();
@@ -699,6 +702,14 @@ export default function Investment() {
   useEffect(() => {
     setRefresh(prev => !prev);
   }, [isDarkMode]);
+
+  // Function to generate years array based on selected range
+  const getYearsRange = () => {
+    return Array.from(
+      {length: yearRangeSpan}, 
+      (_, i) => (yearRangeEnd - yearRangeSpan + 1 + i).toString()
+    );
+  };
 
   const fetchInvestments = async () => {
     try {
@@ -787,7 +798,7 @@ export default function Investment() {
   // Pie chart: assetAlloc
   // Asset trend: build yearly data for each asset type
   const currentYear = new Date().getFullYear();
-  const years = Array.from({length: 7}, (_, i) => (currentYear - 6 + i).toString());
+  const years = getYearsRange();
   // For each asset type, build an array of yearly totals
   const assetYearData = assetAlloc.map(asset => {
     return years.map(year => {
@@ -855,19 +866,62 @@ export default function Investment() {
               Yearly Portfolio Growth
             </Text>
             
-            <View style={{ 
-              backgroundColor: colors.primary + '20',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 20,
-              flexDirection: 'row',
-              alignItems: 'center'
-            }}>
+            <TouchableOpacity 
+              style={{ 
+                backgroundColor: colors.primary + '20',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 20,
+                flexDirection: 'row',
+                alignItems: 'center'
+              }}
+              onPress={() => {
+                // Show year range selection modal
+                Alert.alert(
+                  "Change Year Range",
+                  "Select a time period to show in the chart",
+                  [
+                    {
+                      text: "Last 3 Years",
+                      onPress: () => {
+                        setYearRangeSpan(3);
+                        setYearRangeEnd(new Date().getFullYear());
+                      }
+                    },
+                    {
+                      text: "Last 5 Years",
+                      onPress: () => {
+                        setYearRangeSpan(5);
+                        setYearRangeEnd(new Date().getFullYear());
+                      }
+                    },
+                    {
+                      text: "Last 7 Years",
+                      onPress: () => {
+                        setYearRangeSpan(7);
+                        setYearRangeEnd(new Date().getFullYear());
+                      }
+                    },
+                    {
+                      text: "Last 10 Years",
+                      onPress: () => {
+                        setYearRangeSpan(10);
+                        setYearRangeEnd(new Date().getFullYear());
+                      }
+                    },
+                    {
+                      text: "Cancel",
+                      style: "cancel"
+                    }
+                  ]
+                );
+              }}
+            >
               <Ionicons name="calendar-outline" size={14} color={colors.primary} style={{ marginRight: 6 }} />
               <Text style={{ color: colors.primary, fontWeight: '500', fontSize: 13 }}>
-                {years[0]}-{years[years.length-1]}
+                {years[0]}-{years[years.length-1]} ▼
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
           
           {/* Calculate growth rate year over year */}
@@ -1200,38 +1254,378 @@ export default function Investment() {
             })}
           </View>
         </View>
-        {/* Pie Chart for Asset Allocation */}
-        <Text style={[styles.sectionTitle, { color: colors.dark }]}>Asset Allocation Breakdown</Text>
-        <PieChart
-          data={assetAlloc.map(asset => ({
-            name:
-              asset.type === 'Mutual Funds' ? 'MF'
-              : asset.type === 'Fixed Deposit' ? 'FD'
-              : asset.type,
-            population: asset.value,
-            color: asset.color,
-            legendFontColor: isDarkMode ? colors.light : '#333',
-            legendFontSize: 13,
-          }))}
-          width={Dimensions.get('window').width - 100}
-          height={160}
-          chartConfig={{
-            color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-            propsForLabels: { numberOfLines: 2, fontSize: 13 },
-            propsForBackgroundLines: {},
-            propsForDots: {},
-            decimalPlaces: 0,
-            percentage: true,
-          }}
-          accessor="population"
-          backgroundColor="transparent"
-          paddingLeft="0"
-          absolute
-          hasLegend={true}
-          avoidFalseZero
-          showValuesOnAbsolute={false}
-          center={[0, 0]}
-        />
+        {/* Redesigned Asset Allocation Breakdown - Modern Card Layout */}
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: 16,
+          padding: 20,
+          marginTop: 10,
+          marginBottom: 24,
+          ...shadows.sm
+        }}>
+          <Text style={{ 
+            fontSize: 22, 
+            fontWeight: '600', 
+            color: colors.dark,
+            marginBottom: 16
+          }}>
+            Asset Allocation Breakdown
+          </Text>
+
+          {/* Progress bars for allocation instead of pie chart */}
+          <View style={{ marginBottom: 16 }}>
+            {assetAlloc.filter(asset => asset.value > 0).length > 0 ? (
+              assetAlloc
+                .filter(asset => asset.value > 0)
+                .sort((a, b) => b.value - a.value)
+                .map((asset, index) => {
+                  // Calculate percentage
+                  const percentage = totalValue > 0 ? ((asset.value / totalValue) * 100) : 0;
+                  
+                  return (
+                    <View key={asset.type} style={{ marginBottom: 12 }}>
+                      <View style={{ 
+                        flexDirection: 'row', 
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 6
+                      }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={{ 
+                            width: 32, 
+                            height: 32, 
+                            borderRadius: 10, 
+                            backgroundColor: asset.color + '20',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            marginRight: 12
+                          }}>
+                            <Ionicons name={asset.icon} size={18} color={asset.color} />
+                          </View>
+                          <View>
+                            <Text style={{ 
+                              fontSize: 16, 
+                              fontWeight: '600', 
+                              color: colors.dark 
+                            }}>
+                              {asset.type}
+                            </Text>
+                            <Text style={{ 
+                              fontSize: 14, 
+                              color: asset.color,
+                              fontWeight: '500'
+                            }}>
+                              {percentage.toFixed(1)}%
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={{ 
+                          fontSize: 16, 
+                          fontWeight: 'bold', 
+                          color: colors.dark 
+                        }}>
+                          ₹{asset.value.toLocaleString('en-IN')}
+                        </Text>
+                      </View>
+                      
+                      {/* Progress bar */}
+                      <View style={{ 
+                        height: 8, 
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
+                        borderRadius: 4,
+                        overflow: 'hidden'
+                      }}>
+                        <View 
+                          style={{
+                            width: `${percentage}%`,
+                            height: '100%',
+                            backgroundColor: asset.color,
+                            borderRadius: 4
+                          }}
+                        />
+                      </View>
+                    </View>
+                  );
+                })
+            ) : (
+              <View style={{ 
+                padding: 20,
+                alignItems: 'center',
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                borderRadius: 12
+              }}>
+                <Ionicons name="information-circle-outline" size={24} color={colors.medium} />
+                <Text style={{ 
+                  color: colors.medium, 
+                  textAlign: 'center', 
+                  marginTop: 10,
+                  fontSize: 15
+                }}>
+                  No investment data available. Add investments to see your portfolio breakdown.
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Distribution Statistics */}
+          {assetAlloc.some(asset => asset.value > 0) && (
+            <View style={{
+              marginTop: 16,
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+              borderRadius: 12,
+              padding: 16
+            }}>
+              <Text style={{ 
+                fontSize: 17, 
+                fontWeight: '600', 
+                color: colors.dark,
+                marginBottom: 12
+              }}>
+                Distribution Statistics
+              </Text>
+              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                {/* Largest Allocation */}
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  {(() => {
+                    const largestAsset = [...assetAlloc]
+                      .filter(asset => asset.value > 0)
+                      .sort((a, b) => b.value - a.value)[0];
+                    
+                    const largestPercentage = totalValue > 0 
+                      ? ((largestAsset?.value || 0) / totalValue) * 100 
+                      : 0;
+                    
+                    return (
+                      <View style={{
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                        borderRadius: 8,
+                        padding: 12,
+                        minHeight: 90,
+                        justifyContent: 'space-between'
+                      }}>
+                        <Text style={{ fontSize: 14, color: colors.medium }}>Largest Allocation</Text>
+                        <View style={{ marginTop: 12 }}>
+                          <Text style={{ 
+                            fontSize: 15, 
+                            fontWeight: '700', 
+                            color: largestAsset?.color || colors.dark,
+                            marginBottom: 2
+                          }}>
+                            {largestAsset?.type || 'None'}
+                          </Text>
+                          <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.dark }}>
+                            {largestPercentage.toFixed(1)}%
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })()}
+                </View>
+                
+                {/* Number of Asset Types */}
+                <View style={{ flex: 1 }}>
+                  {(() => {
+                    const assetCount = assetAlloc.filter(a => a.value > 0).length;
+                    let diversificationStatus = 'Low';
+                    let statusColor = '#ef4444'; // red
+                    
+                    if (assetCount >= 5) {
+                      diversificationStatus = 'High';
+                      statusColor = '#10b981'; // green
+                    } else if (assetCount >= 3) {
+                      diversificationStatus = 'Medium';
+                      statusColor = '#f59e0b'; // amber
+                    }
+                    
+                    return (
+                      <View style={{
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                        borderRadius: 8,
+                        padding: 12,
+                        minHeight: 90,
+                        justifyContent: 'space-between'
+                      }}>
+                        <Text style={{ fontSize: 14, color: colors.medium }}>Diversification</Text>
+                        <View style={{ marginTop: 12 }}>
+                          <Text style={{ 
+                            fontSize: 15, 
+                            fontWeight: '700', 
+                            color: statusColor,
+                            marginBottom: 2
+                          }}>
+                            {diversificationStatus}
+                          </Text>
+                          <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.dark }}>
+                            {assetCount} {assetCount === 1 ? 'Type' : 'Types'}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })()}
+                </View>
+              </View>
+            </View>
+          )}
+          
+          {/* Portfolio Insights */}
+          {assetAlloc.some(asset => asset.value > 0) && (
+            <View style={{ 
+              marginTop: 20,
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+              borderRadius: 12,
+              padding: 16
+            }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                <Ionicons name="bulb-outline" size={20} color="#f59e0b" style={{ marginRight: 8 }} />
+                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.dark }}>
+                  Portfolio Insights
+                </Text>
+              </View>
+              
+              {(() => {
+                // Find the most dominant asset type
+                const dominantAsset = [...assetAlloc]
+                  .filter(asset => asset.value > 0)
+                  .sort((a, b) => b.value - a.value)[0];
+                
+                const dominantPercentage = totalValue > 0 
+                  ? ((dominantAsset?.value || 0) / totalValue) * 100 
+                  : 0;
+                
+                if (dominantPercentage > 50) {
+                  return (
+                    <Text style={{ color: colors.medium, lineHeight: 22, fontSize: 16 }}>
+                      Your portfolio is heavily concentrated in {dominantAsset.type} ({dominantPercentage.toFixed(0)}%). 
+                      Consider diversifying to reduce risk.
+                    </Text>
+                  );
+                } else if (assetAlloc.filter(a => a.value > 0).length < 3) {
+                  return (
+                    <Text style={{ color: colors.medium, lineHeight: 22, fontSize: 16 }}>
+                      Your portfolio has limited diversification. Consider adding more asset types to balance risk.
+                    </Text>
+                  );
+                } else {
+                  return (
+                    <Text style={{ color: colors.medium, lineHeight: 22, fontSize: 16 }}>
+                      Your portfolio is well diversified across {assetAlloc.filter(a => a.value > 0).length} asset types.
+                    </Text>
+                  );
+                }
+              })()}
+            </View>
+          )}
+          
+          {/* Risk Allocation (Optional Calculation) */}
+          {assetAlloc.some(asset => asset.value > 0) && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={{ 
+                fontSize: 17, 
+                fontWeight: '600', 
+                color: colors.dark,
+                marginBottom: 12
+              }}>
+                Risk Allocation
+              </Text>
+              
+              {/* Simple risk visualization */}
+              <View style={{
+                height: 16,
+                borderRadius: 8,
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                flexDirection: 'row',
+                overflow: 'hidden'
+              }}>
+                {(() => {
+                  // Simplified risk calculation
+                  // Stocks and Crypto: High risk (red)
+                  // Mutual Funds and Gold: Medium risk (orange)
+                  // Fixed Deposit and Real Estate: Low risk (green)
+                  // Others: Medium risk (orange)
+                  
+                  const highRiskAssets = assetAlloc.filter(asset => 
+                    ['Stocks', 'Crypto'].includes(asset.type) && asset.value > 0
+                  );
+                  const mediumRiskAssets = assetAlloc.filter(asset => 
+                    ['Mutual Funds', 'Gold', 'Others'].includes(asset.type) && asset.value > 0
+                  );
+                  const lowRiskAssets = assetAlloc.filter(asset => 
+                    ['Fixed Deposit', 'Real Estate'].includes(asset.type) && asset.value > 0
+                  );
+                  
+                  const highRiskValue = highRiskAssets.reduce((sum, asset) => sum + asset.value, 0);
+                  const mediumRiskValue = mediumRiskAssets.reduce((sum, asset) => sum + asset.value, 0);
+                  const lowRiskValue = lowRiskAssets.reduce((sum, asset) => sum + asset.value, 0);
+                  
+                  const highRiskPercentage = totalValue > 0 ? (highRiskValue / totalValue) * 100 : 0;
+                  const mediumRiskPercentage = totalValue > 0 ? (mediumRiskValue / totalValue) * 100 : 0;
+                  const lowRiskPercentage = totalValue > 0 ? (lowRiskValue / totalValue) * 100 : 0;
+                  
+                  return (
+                    <>
+                      <View style={{ 
+                        width: `${lowRiskPercentage}%`, 
+                        height: '100%', 
+                        backgroundColor: '#10b981' 
+                      }} />
+                      <View style={{ 
+                        width: `${mediumRiskPercentage}%`, 
+                        height: '100%', 
+                        backgroundColor: '#f59e0b' 
+                      }} />
+                      <View style={{ 
+                        width: `${highRiskPercentage}%`, 
+                        height: '100%', 
+                        backgroundColor: '#ef4444' 
+                      }} />
+                    </>
+                  );
+                })()}
+              </View>
+              
+              {/* Risk legend */}
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between',
+                marginTop: 8
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ 
+                    width: 10, 
+                    height: 10, 
+                    borderRadius: 5, 
+                    backgroundColor: '#10b981',
+                    marginRight: 6 
+                  }} />
+                  <Text style={{ color: colors.medium, fontSize: 12 }}>Low Risk</Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ 
+                    width: 10, 
+                    height: 10, 
+                    borderRadius: 5, 
+                    backgroundColor: '#f59e0b',
+                    marginRight: 6 
+                  }} />
+                  <Text style={{ color: colors.medium, fontSize: 12 }}>Medium Risk</Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ 
+                    width: 10, 
+                    height: 10, 
+                    borderRadius: 5, 
+                    backgroundColor: '#ef4444',
+                    marginRight: 6 
+                  }} />
+                  <Text style={{ color: colors.medium, fontSize: 12 }}>High Risk</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
         {/* Asset Type Trend - Redesigned */}
         <View style={{
           backgroundColor: colors.card,
@@ -1427,13 +1821,25 @@ export default function Investment() {
               );
             }
             
-            const startVal = yearValues[0] || 0;
-            const endVal = yearValues[yearValues.length - 1] || 0;
+            // Find first and last non-zero values
+            const nonZeroYears = years.filter((_, idx) => yearData[idx] > 0);
+            const firstNonZeroYear = nonZeroYears[0];
+            const lastNonZeroYear = nonZeroYears[nonZeroYears.length - 1];
+            
+            const firstNonZeroYearIdx = years.indexOf(firstNonZeroYear);
+            const lastNonZeroYearIdx = years.indexOf(lastNonZeroYear);
+            
+            const startVal = yearData[firstNonZeroYearIdx] || 0;
+            const endVal = yearData[lastNonZeroYearIdx] || 0;
+            
             const maxVal = Math.max(...yearValues);
             const maxYear = years[yearData.indexOf(maxVal)];
             
-            // Calculate growth
-            const growth = startVal > 0 ? ((endVal - startVal) / startVal) * 100 : 0;
+            // Calculate growth only if we have valid values
+            let growth = 0;
+            if (startVal > 0 && endVal > 0 && firstNonZeroYear !== lastNonZeroYear) {
+              growth = ((endVal - startVal) / startVal) * 100;
+            }
             
             return (
               <View style={{
