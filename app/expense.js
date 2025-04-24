@@ -12,6 +12,7 @@ import {
   Platform,
   SafeAreaView
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../firebase';
@@ -49,6 +50,9 @@ const Expense = () => {
   // Get theme context
   const { isDarkMode } = useTheme();
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  
+  // Add router for navigation
+  const router = useRouter();
   
   // Get expenses context
   const { 
@@ -95,6 +99,11 @@ const Expense = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [paginatedExpenses, setPaginatedExpenses] = useState([]);
   const [hasMore, setHasMore] = useState(true);
+
+  // Navigation to Analysis page
+  const navigateToAnalysis = () => {
+    router.push('/expenseAnalysis');
+  };
 
   // Refresh expenses when component mounts
   useEffect(() => {
@@ -453,6 +462,32 @@ const Expense = () => {
             <Ionicons name="add" size={24} color={colors.white} />
           </TouchableOpacity>
         </View>
+        
+        {/* Analysis Button - Repositioned with new style */}
+        <TouchableOpacity
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: `${colors.primary}15`,
+            borderRadius: 12,
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            marginHorizontal: 16,
+            marginBottom: 16,
+            borderWidth: 1,
+            borderColor: `${colors.primary}30`,
+            ...Theme.shadows.xs,
+          }}
+          onPress={navigateToAnalysis}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="analytics-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+          <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 15 }}>
+            View Expense Analysis
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.primary} style={{ marginLeft: 4 }} />
+        </TouchableOpacity>
         
         {/* Total Expense Card */}
         <View style={{ 

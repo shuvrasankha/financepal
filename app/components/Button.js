@@ -26,7 +26,7 @@ const Button = ({
     if (disabled) {
       return {
         backgroundColor: `${colors.medium}40`,
-        textColor: colors.medium,
+        textColor: isDarkMode ? colors.medium : colors.medium,
         borderColor: 'transparent',
       };
     }
@@ -35,7 +35,7 @@ const Button = ({
       case 'primary':
         return {
           backgroundColor: colors.primary,
-          textColor: colors.white,
+          textColor: '#FFFFFF',
           borderColor: 'transparent',
         };
       case 'secondary':
@@ -53,19 +53,19 @@ const Button = ({
       case 'destructive':
         return {
           backgroundColor: colors.error,
-          textColor: colors.white,
+          textColor: '#FFFFFF',
           borderColor: 'transparent',
         };
       case 'light':
         return {
-          backgroundColor: colors.light,
-          textColor: colors.dark,
+          backgroundColor: isDarkMode ? colors.lighter : colors.light,
+          textColor: isDarkMode ? colors.dark : colors.dark,
           borderColor: 'transparent',
         };
       default:
         return {
           backgroundColor: colors.primary,
-          textColor: colors.white,
+          textColor: '#FFFFFF',
           borderColor: 'transparent',
         };
     }

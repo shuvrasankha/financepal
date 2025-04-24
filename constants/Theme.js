@@ -23,32 +23,42 @@ const Theme = {
       // Backgrounds
       background: '#F9FAFB',    // Gray 50 - main background
       card: '#FFFFFF',          // Card background
+      
+      // Additional
+      mediumDark: '#4B5563',    // Gray 600 - medium-dark text
+      borderLight: '#F3F4F6',   // Light border color
+      overlay: 'rgba(0, 0, 0, 0.5)', // Modal overlay
     },
   },
   
   dark: {
     colors: {
-      // Primary brand colors
-      primary: '#6366F1',       // Indigo 500 - slightly lighter for dark mode
-      primaryLight: '#312E81',  // Indigo 900 - darker in dark mode
-      primaryDark: '#818CF8',   // Indigo 400 - lighter for contrast
+      // Primary brand colors - brightened for dark mode
+      primary: '#818CF8',       // Indigo 400 - brighter for dark mode
+      primaryLight: '#4F46E5',  // Use the light mode primary for better visibility
+      primaryDark: '#6366F1',   // Indigo 500 - adjusted for dark mode
       
-      // Accent colors
+      // Accent colors - brightened for dark mode
       success: '#34D399',       // Emerald 400 - brighter for dark mode
       error: '#F87171',         // Red 400 - brighter for dark mode
       warning: '#FBBF24',       // Amber 400 - brighter for dark mode
       info: '#60A5FA',          // Blue 400 - brighter for dark mode
 
-      // Neutrals
-      dark: '#F9FAFB',          // Gray 50 - inverted for dark mode
-      medium: '#D1D5DB',        // Gray 300 - lighter for dark mode
-      light: '#374151',         // Gray 700 - darker for dark mode
-      lighter: '#1F2937',       // Gray 800 - darker for dark mode
-      white: '#111827',         // Gray 900 - darkest background
+      // Neutrals - adjusted for better readability
+      dark: '#F9FAFB',          // Gray 50 - very light text for better visibility
+      medium: '#E5E7EB',        // Gray 200 - lighter for better readability
+      light: '#4B5563',         // Gray 600 - lighter border color for visibility
+      lighter: '#374151',       // Gray 700 - lighter background for contrast
+      white: '#1F2937',         // Gray 800 - dark but not too dark
       
       // Backgrounds
       background: '#111827',    // Gray 900 - dark background
-      card: '#1F2937',          // Gray 800 - card background
+      card: '#1E293B',          // Slate 800 - slightly blue-tinted for better contrast
+      
+      // Additional
+      mediumDark: '#D1D5DB',    // Gray 300 - light text for dark mode
+      borderLight: '#374151',   // Darker border for dark mode
+      overlay: 'rgba(0, 0, 0, 0.7)', // Darker modal overlay for dark mode
     },
   },
   

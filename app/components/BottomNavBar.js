@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Dimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Text } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,12 +18,11 @@ const BottomNavBar = () => {
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
 
   const navItems = [
-    { name: 'index', icon: 'home', label: 'Home' },
-    { name: 'expense', icon: 'wallet', label: 'Expenses' },
-    { name: 'budget', icon: 'calculator', label: 'Budget' },
-    { name: 'expenseAnalysis', icon: 'bar-chart', label: 'Analysis' },
-    { name: 'investment', icon: 'trending-up', label: 'Investment' },
-    { name: 'settings', icon: 'settings', label: 'Settings' },
+    { name: 'index', icon: 'home-outline', activeIcon: 'home', label: 'Home' },
+    { name: 'expense', icon: 'wallet-outline', activeIcon: 'wallet-outline', label: 'Expense' },
+    { name: 'budget', icon: 'calculator-outline', activeIcon: 'calculator-outline', label: 'Budget' },
+    { name: 'investment', icon: 'trending-up-outline', activeIcon: 'trending-up-outline', label: 'Invest' },
+    { name: 'settings', icon: 'settings-outline', activeIcon: 'settings-outline', label: 'More' },
   ];
 
   const bottomPadding = Platform.OS === 'ios' ? Math.max(insets.bottom, 20) : 0;
@@ -39,8 +38,8 @@ const BottomNavBar = () => {
           { 
             paddingBottom: bottomPadding,
             height: 70 + bottomPadding,
-            backgroundColor: colors.card,
-            borderTopColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+            backgroundColor: isDarkMode ? colors.card : '#FFFFFF',
+            borderTopColor: isDarkMode ? colors.borderLight : 'rgba(0,0,0,0.05)',
           }
         ]}
       >
@@ -48,30 +47,36 @@ const BottomNavBar = () => {
           style={styles.gradient}
           colors={isDarkMode 
             ? [colors.card + 'ee', colors.card] 
-            : ['rgba(255, 255, 255, 0.95)', 'rgba(255, 255, 255, 1)']}
+            : ['#FFFFFF', '#FFFFFF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
         >
-          {navItems.map(item => (
-            <TouchableOpacity
-              key={item.name}
-              onPress={() => nav.navigate(item.name)}
-              accessibilityLabel={item.label}
-              style={[
-                styles.navButton,
-                active === item.name && [
-                  styles.activeNavButton,
-                  { backgroundColor: colors.primary }
-                ]
-              ]}
-            >
-              <Ionicons
-                name={item.icon}
-                size={24}
-                color={active === item.name ? colors.white : colors.primary}
-              />
-            </TouchableOpacity>
-          ))}
+          {navItems.map(item => {
+            const isActive = active === item.name;
+            return (
+              <TouchableOpacity
+                key={item.name}
+                onPress={() => nav.navigate(item.name)}
+                accessibilityLabel={item.label}
+                style={styles.navButton}
+              >
+                <Ionicons
+                  name={isActive ? item.activeIcon : item.icon}
+                  size={24}
+                  color={isActive ? colors.primary : isDarkMode ? colors.medium : '#9E9E9E'}
+                />
+                <Text style={[
+                  styles.navLabel,
+                  { 
+                    color: isActive ? colors.primary : isDarkMode ? colors.medium : '#9E9E9E',
+                    opacity: isActive ? 1 : 0.8
+                  }
+                ]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </LinearGradient>
       </View>
     </KeyboardAvoidingView>
@@ -89,30 +94,33 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
-    shadowOffset: { width: 0, height: -2 },
+    shadowOffset: { width: 0, height: -1 },
     shadowOpacity: 0.05,
     shadowRadius: 3,
-    elevation: 6,
-    borderTopWidth: 1,
+    elevation: 5,
+    borderTopWidth: 0.5,
   },
   gradient: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+    paddingTop: 5,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
-    borderRadius: 16,
-    paddingVertical: 6,
-    backgroundColor: 'transparent',
-    marginHorizontal: 6,
+    height: '100%',
+    paddingVertical: 8,
   },
-  activeNavButton: {
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+  navLabel: {
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  activeNavLabel: {
+    fontWeight: '600',
   }
 });
 

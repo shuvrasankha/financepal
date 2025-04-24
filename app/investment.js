@@ -6,17 +6,18 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import { db, auth } from '../firebase';
-import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
 import { useTheme } from '../contexts/ThemeContext';
 import Theme from '../constants/Theme';
 
 const ASSET_TYPES = [
-  { type: 'Stocks', color: '#6366f1', icon: 'trending-up-outline', value: 120000 },
-  { type: 'Mutual Funds', color: '#10b981', icon: 'pie-chart-outline', value: 80000 },
-  { type: 'Gold', color: '#f59e0b', icon: 'sparkles-outline', value: 30000 },
-  { type: 'Fixed Deposit', color: '#ef4444', icon: 'cash-outline', value: 50000 },
-  { type: 'Others', color: '#3b82f6', icon: 'cube-outline', value: 10000 },
-  { type: 'Crypto', color: '#a855f7', icon: 'logo-bitcoin', value: 20000 },
+  { type: 'Stocks', color: '#6366f1', icon: 'trending-up-outline', value: 0 },
+  { type: 'Mutual Funds', color: '#10b981', icon: 'pie-chart-outline', value: 0 },
+  { type: 'Gold', color: '#f59e0b', icon: 'sparkles-outline', value: 0 },
+  { type: 'Fixed Deposit', color: '#ef4444', icon: 'cash-outline', value: 0 },
+  { type: 'Real Estate', color: '#a16207', icon: 'home-outline', value: 0 },
+  { type: 'Others', color: '#3b82f6', icon: 'cube-outline', value: 0 },
+  { type: 'Crypto', color: '#a855f7', icon: 'logo-bitcoin', value: 0 },
 ];
 
 const INVESTMENT_TYPES = [
@@ -33,6 +34,7 @@ const INVESTMENT_TYPES = [
 function AddInvestmentForm({ onClose, onAdded }) {
   const [form, setForm] = useState({
     amount: '',
+    currentValue: '', // Add current value field
     investmentType: '',
     dateInvested: new Date().toISOString().split('T')[0],
     note: '',
@@ -57,17 +59,41 @@ function AddInvestmentForm({ onClose, onAdded }) {
     try {
       const user = auth.currentUser;
       if (!user) throw new Error('Not logged in');
-      await addDoc(collection(db, 'investments'), {
+      
+      console.log('Form data before submission:', form); // Log form data to debug
+
+      // Use current value if provided, otherwise use investment amount as current value
+      const initialAmount = Number(form.amount);
+      const currentValue = form.currentValue && form.currentValue !== '' ? 
+                            Number(form.currentValue) : 
+                            initialAmount;
+      
+      console.log('Initial amount:', initialAmount);
+      console.log('Current value:', currentValue);
+      
+      // Calculate profit/loss percentage
+      const profitLossPercentage = initialAmount > 0 
+        ? ((currentValue - initialAmount) / initialAmount) * 100 
+        : 0;
+      
+      const investmentData = {
         userId: user.uid,
-        amount: Number(form.amount),
-        type: form.investmentType, // Changed to 'type' to match Firebase rules
-        investmentType: form.investmentType, // Keep this for backward compatibility
+        amount: initialAmount,
+        currentValue: currentValue,
+        profitLossPercentage: parseFloat(profitLossPercentage.toFixed(2)),
+        type: form.investmentType, // Match Firebase rules
+        investmentType: form.investmentType, // Keep for backward compatibility
         dateInvested: form.dateInvested,
         note: form.note,
         stockName: form.stockName,
         mfName: form.mfName,
         createdAt: new Date().toISOString(), // Store as ISO string with full datetime
-      });
+      };
+      
+      console.log('Saving investment data:', investmentData);
+      
+      await addDoc(collection(db, 'investments'), investmentData);
+      
       alert('Investment added!');
       onClose();
       if (onAdded) onAdded();
@@ -117,6 +143,26 @@ function AddInvestmentForm({ onClose, onAdded }) {
           keyboardType="numeric"
           value={form.amount}
           onChangeText={text => handleChange('amount', text.replace(/[^0-9.]/g, ''))}
+          placeholder="₹5000"
+          placeholderTextColor={isDarkMode ? colors.medium : "#aaa"}
+        />
+      </View>
+      <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Current Value</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+        <TextInput
+          style={{ 
+            borderWidth: 1, 
+            borderColor: isDarkMode ? colors.light : '#e5e7eb', 
+            borderRadius: 8, 
+            padding: 10, 
+            flex: 1, 
+            fontSize: 18,
+            color: colors.dark,
+            backgroundColor: colors.card 
+          }}
+          keyboardType="numeric"
+          value={form.currentValue}
+          onChangeText={text => handleChange('currentValue', text.replace(/[^0-9.]/g, ''))}
           placeholder="₹5000"
           placeholderTextColor={isDarkMode ? colors.medium : "#aaa"}
         />
@@ -269,11 +315,379 @@ function AddInvestmentForm({ onClose, onAdded }) {
   );
 }
 
+// UpdateInvestmentValueForm component for updating current values by asset type
+function UpdateInvestmentValueForm({ onClose, onUpdated, assetType }) {
+  const [investments, setInvestments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updatedValues, setUpdatedValues] = useState({});
+  
+  // Get theme colors
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
+
+  // Fetch investments of the selected asset type
+  useEffect(() => {
+    const fetchAssetInvestments = async () => {
+      try {
+        setLoading(true);
+        const user = auth.currentUser;
+        if (!user) return;
+        
+        const q = query(
+          collection(db, 'investments'), 
+          where('userId', '==', user.uid),
+          where('type', '==', assetType)
+        );
+        
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => {
+          const docData = doc.data();
+          return {
+            id: doc.id,
+            ...docData,
+            amount: Number(docData.amount) || 0,
+            currentValue: Number(docData.currentValue) || Number(docData.amount) || 0
+          };
+        });
+        
+        // Initialize updatedValues with current values
+        const initialValues = {};
+        data.forEach(inv => {
+          initialValues[inv.id] = inv.currentValue.toString();
+        });
+        
+        setInvestments(data);
+        setUpdatedValues(initialValues);
+      } catch (e) {
+        console.error('Error fetching investments for update:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAssetInvestments();
+  }, [assetType]);
+
+  // Handle changes to the current value inputs
+  const handleValueChange = (id, value) => {
+    setUpdatedValues(prev => ({
+      ...prev,
+      [id]: value.replace(/[^0-9.]/g, '')
+    }));
+  };
+
+  // Submit updated values to Firestore
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not logged in');
+      
+      // Process each investment that has been updated
+      const updatePromises = investments.map(async (investment) => {
+        const newValue = Number(updatedValues[investment.id]);
+        
+        // Skip if value hasn't changed
+        if (newValue === investment.currentValue) return null;
+        
+        // Calculate new profit/loss percentage
+        const initialAmount = investment.amount;
+        const profitLossPercentage = initialAmount > 0 
+          ? ((newValue - initialAmount) / initialAmount) * 100 
+          : 0;
+        
+        console.log(`Updating investment ${investment.id}: Current value from ${investment.currentValue} to ${newValue}, P/L: ${profitLossPercentage.toFixed(2)}%`);
+        
+        // Update the document in Firestore
+        const docRef = doc(db, 'investments', investment.id);
+        return updateDoc(docRef, {
+          currentValue: newValue,
+          profitLossPercentage: parseFloat(profitLossPercentage.toFixed(2))
+        });
+      });
+      
+      // Wait for all updates to complete
+      await Promise.all(updatePromises.filter(Boolean));
+      
+      alert('Investment values updated successfully!');
+      if (onUpdated) onUpdated();
+      onClose();
+    } catch (e) {
+      alert('Failed to update investment values: ' + e.message);
+      console.error('Error updating investment values:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={{ 
+      flex: 1, 
+      backgroundColor: colors.background,
+    }}>
+      {/* Enhanced Header with Close Button */}
+      <View style={{ 
+        flexDirection: 'row', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        paddingHorizontal: 20,
+        paddingTop: 50,
+        paddingBottom: 16,
+        backgroundColor: colors.primary,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        ...shadows.md
+      }}>
+        <Text style={{ 
+          fontSize: 22, 
+          fontWeight: 'bold', 
+          color: colors.white 
+        }}>
+          Update {assetType} Values
+        </Text>
+        <TouchableOpacity
+          onPress={onClose}
+          style={{
+            padding: 10,
+            borderRadius: 20,
+            backgroundColor: 'rgba(255,255,255,0.2)',
+          }}
+        >
+          <Ionicons name="close" size={24} color={colors.white} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Main Content */}
+      <ScrollView 
+        style={{ flex: 1 }}
+        contentContainerStyle={{ 
+          padding: 16,
+          paddingBottom: 40
+        }}
+      >
+        {loading ? (
+          <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center', height: 200 }}>
+            <Text style={{ color: colors.medium, marginBottom: 10 }}>Loading investments...</Text>
+          </View>
+        ) : investments.length === 0 ? (
+          <View style={{ 
+            padding: 20, 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            height: 300,
+            backgroundColor: colors.card,
+            borderRadius: 12,
+            ...shadows.sm
+          }}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.medium} style={{ marginBottom: 16 }} />
+            <Text style={{ color: colors.medium, fontSize: 16, textAlign: 'center' }}>
+              No {assetType} investments found.
+            </Text>
+            <TouchableOpacity
+              style={{
+                marginTop: 24,
+                backgroundColor: colors.primary,
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+                borderRadius: 8,
+              }}
+              onPress={onClose}
+            >
+              <Text style={{ color: colors.white, fontWeight: '500' }}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <Text style={{ 
+              marginBottom: 16, 
+              fontSize: 16, 
+              color: colors.medium,
+              textAlign: 'center'
+            }}>
+              Update the current values of your {assetType} investments:
+            </Text>
+            
+            {investments.map(investment => (
+              <View key={investment.id} style={{ 
+                backgroundColor: colors.card, 
+                borderRadius: 16, 
+                padding: 20, 
+                marginBottom: 16,
+                ...shadows.sm
+              }}>
+                <View style={{ 
+                  flexDirection: 'row', 
+                  justifyContent: 'space-between', 
+                  marginBottom: 12,
+                  alignItems: 'center'
+                }}>
+                  <Text style={{ 
+                    fontSize: 18, 
+                    fontWeight: '600', 
+                    color: colors.dark,
+                    flex: 1
+                  }}>
+                    {investment.stockName || investment.mfName || assetType}
+                  </Text>
+                  <View style={{
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    padding: 8,
+                    borderRadius: 8
+                  }}>
+                    <Text style={{ 
+                      fontSize: 14, 
+                      color: colors.medium,
+                      fontWeight: '500'
+                    }}>
+                      {new Date(investment.dateInvested).toLocaleDateString()}
+                    </Text>
+                  </View>
+                </View>
+                
+                <View style={{ 
+                  flexDirection: 'row', 
+                  justifyContent: 'space-between', 
+                  marginBottom: 16,
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  padding: 12,
+                  borderRadius: 8
+                }}>
+                  <Text style={{ fontSize: 15, color: colors.medium }}>Initial Investment:</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.dark }}>
+                    ₹{investment.amount.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                
+                <Text style={{ 
+                  marginBottom: 8, 
+                  fontSize: 15, 
+                  color: colors.dark,
+                  fontWeight: '500' 
+                }}>
+                  Current Value:
+                </Text>
+                
+                <View style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderWidth: 1,
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                }}>
+                  <Text style={{ 
+                    fontSize: 20, 
+                    fontWeight: 'bold',
+                    marginRight: 8,
+                    color: colors.primary
+                  }}>₹</Text>
+                  <TextInput
+                    style={{ 
+                      flex: 1, 
+                      fontSize: 20,
+                      color: colors.dark,
+                      padding: 8,
+                      fontWeight: '500'
+                    }}
+                    keyboardType="numeric"
+                    value={updatedValues[investment.id]}
+                    onChangeText={text => handleValueChange(investment.id, text)}
+                    placeholder={investment.currentValue.toString()}
+                    placeholderTextColor={isDarkMode ? colors.medium : "rgba(0,0,0,0.3)"}
+                  />
+                </View>
+                
+                {updatedValues[investment.id] && Number(updatedValues[investment.id]) !== investment.currentValue && (
+                  <View style={{ 
+                    marginTop: 12, 
+                    flexDirection: 'row', 
+                    alignItems: 'center',
+                    justifyContent: 'flex-end'
+                  }}>
+                    {(() => {
+                      const newValue = Number(updatedValues[investment.id]);
+                      const plPercentage = investment.amount > 0 
+                        ? ((newValue - investment.amount) / investment.amount) * 100 
+                        : 0;
+                      const isProfit = plPercentage >= 0;
+                      
+                      return (
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: isProfit ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                          paddingVertical: 4,
+                          paddingHorizontal: 12,
+                          borderRadius: 16
+                        }}>
+                          <Ionicons 
+                            name={isProfit ? "trending-up" : "trending-down"} 
+                            size={16} 
+                            color={isProfit ? '#10b981' : '#ef4444'} 
+                            style={{ marginRight: 4 }}
+                          />
+                          <Text style={{ 
+                            fontSize: 14, 
+                            fontWeight: '600',
+                            color: isProfit ? '#10b981' : '#ef4444'
+                          }}>
+                            {isProfit ? '+' : ''}{plPercentage.toFixed(2)}%
+                          </Text>
+                        </View>
+                      );
+                    })()}
+                  </View>
+                )}
+              </View>
+            ))}
+            
+            <TouchableOpacity 
+              style={{ 
+                backgroundColor: colors.primary, 
+                paddingVertical: 16, 
+                borderRadius: 12, 
+                alignItems: 'center', 
+                flexDirection: 'row', 
+                justifyContent: 'center',
+                marginTop: 8,
+                ...shadows.sm
+              }} 
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              <Ionicons 
+                name="checkmark-circle" 
+                size={24} 
+                color={colors.white} 
+                style={{ marginRight: 8 }} 
+              />
+              <Text style={{ 
+                color: colors.white, 
+                fontWeight: 'bold', 
+                fontSize: 18 
+              }}>
+                {loading ? 'Updating...' : 'Update Values'}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function Investment() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedAssetType, setSelectedAssetType] = useState('');
   const [selectedAssetIdx, setSelectedAssetIdx] = useState(0);
   const [investments, setInvestments] = useState([]);
   const [refresh, setRefresh] = useState(false); // Add a refresh state
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [totalProfitPercentage, setTotalProfitPercentage] = useState(0);
 
   // Get theme colors
   const { isDarkMode } = useTheme();
@@ -290,31 +704,59 @@ export default function Investment() {
     try {
       const user = auth.currentUser;
       if (!user) return;
+      
+      console.log('Fetching investments for user:', user.uid);
       const q = query(collection(db, 'investments'), where('userId', '==', user.uid));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
-        ...doc.data(),
-        createdAt: doc.data().createdAt || '',
-      }));
-
-      // Group investments by category
-      const grouped = {};
-      data.forEach(inv => {
-        const type = inv.investmentType;
-        if (!grouped[type]) grouped[type] = [];
-        grouped[type].push(inv);
+      
+      console.log('Found investments:', snapshot.docs.length);
+      
+      const data = snapshot.docs.map(doc => {
+        const docData = doc.data();
+        console.log('Investment data:', docData);
+        return {
+          id: doc.id,
+          ...docData,
+          // Ensure we have standard naming between type and investmentType
+          type: docData.type || docData.investmentType,
+          investmentType: docData.investmentType || docData.type,
+          // Ensure created date is handled properly
+          createdAt: docData.createdAt || '',
+          // Make sure amount and currentValue are numbers
+          amount: Number(docData.amount) || 0,
+          currentValue: Number(docData.currentValue) || Number(docData.amount) || 0
+        };
       });
 
-      // For each category, filter to only those with valid createdAt, then pick the one with the latest createdAt
-      const latestInvestments = Object.values(grouped).map(invs => {
-        const valid = invs.filter(inv => inv.createdAt && !isNaN(Date.parse(inv.createdAt)));
-        if (valid.length === 0) return null;
-        return valid.reduce((latest, inv) => new Date(inv.createdAt) > new Date(latest.createdAt) ? inv : latest, valid[0]);
-      }).filter(Boolean);
+      // Calculate total investment amount and current value
+      let totalInvestmentAmount = 0;
+      let totalCurrentValue = 0;
 
-      setInvestments(latestInvestments);
+      // Process all investments
+      data.forEach(inv => {
+        totalInvestmentAmount += inv.amount;
+        totalCurrentValue += inv.currentValue;
+      });
+
+      // Calculate overall profit/loss
+      const overallProfit = totalCurrentValue - totalInvestmentAmount;
+      const overallProfitPercentage = totalInvestmentAmount > 0 
+        ? (overallProfit / totalInvestmentAmount) * 100 
+        : 0;
+      
+      console.log('Total investment amount:', totalInvestmentAmount);
+      console.log('Total current value:', totalCurrentValue);
+      console.log('Overall profit:', overallProfit);
+      console.log('Overall profit percentage:', overallProfitPercentage);
+      
+      setTotalProfit(overallProfit);
+      setTotalProfitPercentage(parseFloat(overallProfitPercentage.toFixed(2)));
+      setInvestments(data);
     } catch (e) {
+      console.error('Error fetching investments:', e);
       setInvestments([]);
+      setTotalProfit(0);
+      setTotalProfitPercentage(0);
     }
   };
 
@@ -326,12 +768,18 @@ export default function Investment() {
   const totalValue = investments.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
 
   // Calculate asset allocation from fetched investments
-  const assetAlloc = ASSET_TYPES.map(asset => {
-    // Find the latest investment for this asset type
-    const inv = investments.find(i => i.investmentType === asset.type);
+  const assetAlloc = ASSET_TYPES.map(assetType => {
+    // Find all investments of this type
+    const typeInvestments = investments.filter(inv => 
+      inv.investmentType === assetType.type || inv.type === assetType.type
+    );
+    
+    // Calculate total value for this asset type
+    const totalAmount = typeInvestments.reduce((sum, inv) => sum + Number(inv.amount), 0);
+    
     return {
-      ...asset,
-      value: inv ? Number(inv.amount) : 0
+      ...assetType,
+      value: totalAmount
     };
   });
 
@@ -343,8 +791,10 @@ export default function Investment() {
   // For each asset type, build an array of yearly totals
   const assetYearData = assetAlloc.map(asset => {
     return years.map(year => {
-      return investments.filter(inv => inv.investmentType === asset.type && inv.dateInvested?.startsWith(year))
-        .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+      return investments.filter(inv => 
+        (inv.investmentType === asset.type || inv.type === asset.type) && 
+        inv.dateInvested?.startsWith(year)
+      ).reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
     });
   });
 
@@ -383,58 +833,372 @@ export default function Investment() {
           <Text style={[styles.portfolioLabel, { color: colors.medium }]}>Portfolio Value</Text>
           <Text style={[styles.portfolioValue, { color: colors.primary }]}>₹{totalValue.toLocaleString('en-IN')}</Text>
         </View>
-        {/* Yearly Line Graph */}
-        <Text style={[styles.sectionTitle, { color: colors.dark }]}>Yearly Portfolio Growth</Text>
-        <LineChart
-          data={{
-            labels: years,
-            datasets: [
-              {
-                data: years.map(year =>
-                  investments.filter(inv => inv.dateInvested?.startsWith(year)).reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
-                ),
-                color: () => colors.primary,
-                strokeWidth: 2,
-              },
-            ],
-          }}
-          width={Dimensions.get('window').width - 40}
-          height={220}
-          yAxisLabel="₹"
-          yAxisSuffix=""
-          chartConfig={{
-            backgroundColor: colors.card,
-            backgroundGradientFrom: colors.card,
-            backgroundGradientTo: colors.card,
-            decimalPlaces: 0,
-            color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-            labelColor: (opacity = 1) => `rgba(${isDarkMode ? '255, 255, 255' : '31, 41, 55'}, ${opacity})`,
-            style: { borderRadius: 16 },
-            propsForDots: {
-              r: '5',
-              strokeWidth: '2',
-              stroke: colors.primary,
-            },
-          }}
-          bezier
-          style={{ marginVertical: 12, borderRadius: 12, ...shadows.sm }}
-        />
-        {/* Asset Allocation Cards */}
-        <Text style={[styles.sectionTitle, { color: colors.dark }]}>Asset Allocation</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-          {assetAlloc.map((asset, idx) => (
-            <View key={asset.type} style={{ width: '48%', marginBottom: 14 }}>
-              <View style={[styles.assetCard, { backgroundColor: colors.card, ...shadows.sm }]}>
-                <View style={[styles.assetIcon, { backgroundColor: asset.color + '22' }]}> 
-                  <Ionicons name={asset.icon} size={24} color={asset.color} />
+        {/* Yearly Portfolio Growth - Redesigned */}
+        <View style={{
+          marginVertical: 20,
+          backgroundColor: colors.card,
+          borderRadius: 16,
+          padding: 20,
+          ...shadows.sm
+        }}>
+          <View style={{ 
+            flexDirection: 'row', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: 16
+          }}>
+            <Text style={{ 
+              fontSize: 18, 
+              fontWeight: '600', 
+              color: colors.dark 
+            }}>
+              Yearly Portfolio Growth
+            </Text>
+            
+            <View style={{ 
+              backgroundColor: colors.primary + '20',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 20,
+              flexDirection: 'row',
+              alignItems: 'center'
+            }}>
+              <Ionicons name="calendar-outline" size={14} color={colors.primary} style={{ marginRight: 6 }} />
+              <Text style={{ color: colors.primary, fontWeight: '500', fontSize: 13 }}>
+                {years[0]}-{years[years.length-1]}
+              </Text>
+            </View>
+          </View>
+          
+          {/* Calculate growth rate year over year */}
+          {(() => {
+            const yearlyValues = years.map(year =>
+              investments.filter(inv => inv.dateInvested?.startsWith(year))
+                .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
+            );
+            
+            // Calculate growth from first to last year
+            const firstYearValue = yearlyValues[0] || 0;
+            const lastYearValue = yearlyValues[yearlyValues.length - 1] || 0;
+            const totalGrowth = firstYearValue > 0 
+              ? ((lastYearValue - firstYearValue) / firstYearValue) * 100 
+              : 0;
+            
+            // Calculate CAGR (Compound Annual Growth Rate)
+            const yearsPassed = years.length - 1;
+            const cagr = yearsPassed > 0 && firstYearValue > 0 
+              ? (Math.pow((lastYearValue / firstYearValue), 1 / yearsPassed) - 1) * 100 
+              : 0;
+            
+            return (
+              <View style={{ 
+                flexDirection: 'row', 
+                marginBottom: 16,
+                justifyContent: 'space-between'
+              }}>
+                <View style={{ 
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.02)',
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  flex: 1,
+                  marginRight: 8
+                }}>
+                  <Text style={{ fontSize: 12, color: colors.medium, marginBottom: 2 }}>
+                    Total Growth
+                  </Text>
+                  <Text style={{ 
+                    fontSize: 16, 
+                    fontWeight: 'bold',
+                    color: totalGrowth >= 0 ? '#10b981' : '#ef4444'
+                  }}>
+                    {totalGrowth >= 0 ? '+' : ''}{totalGrowth.toFixed(1)}%
+                  </Text>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.assetType, { color: colors.dark }]}>{asset.type}</Text>
-                  <Text style={[styles.assetValue, { color: colors.primary }]}>₹{asset.value.toLocaleString('en-IN')}</Text>
+                
+                <View style={{ 
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.02)',
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 12,
+                  flex: 1
+                }}>
+                  <Text style={{ fontSize: 12, color: colors.medium, marginBottom: 2 }}>
+                    CAGR
+                  </Text>
+                  <Text style={{ 
+                    fontSize: 16, 
+                    fontWeight: 'bold',
+                    color: cagr >= 0 ? '#10b981' : '#ef4444'
+                  }}>
+                    {cagr >= 0 ? '+' : ''}{cagr.toFixed(1)}%
+                  </Text>
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })()}
+          
+          <LineChart
+            data={{
+              labels: years,
+              datasets: [
+                {
+                  data: years.map(year =>
+                    investments.filter(inv => inv.dateInvested?.startsWith(year))
+                      .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
+                  ),
+                  color: (opacity = 1) => colors.primary,
+                  strokeWidth: 2,
+                },
+              ],
+            }}
+            width={Dimensions.get('window').width - 80}
+            height={200}
+            yAxisLabel="₹"
+            yAxisSuffix=""
+            chartConfig={{
+              backgroundColor: 'transparent',
+              backgroundGradientFrom: colors.card,
+              backgroundGradientTo: colors.card,
+              decimalPlaces: 0,
+              color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
+              labelColor: (opacity = 1) => `rgba(${isDarkMode ? '255, 255, 255' : '31, 41, 55'}, ${opacity})`,
+              propsForDots: {
+                r: '6',
+                strokeWidth: '2',
+                stroke: colors.primary,
+              },
+              propsForBackgroundLines: {
+                strokeDasharray: '6, 6',
+                stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+              },
+              fillShadowGradient: colors.primary,
+              fillShadowGradientOpacity: 0.2,
+            }}
+            bezier
+            withInnerLines={false}
+            withOuterLines={true}
+            withVerticalLabels={true}
+            withHorizontalLabels={true}
+            style={{ 
+              borderRadius: 8,
+            }}
+          />
+          
+          {/* Add Max and Min Values */}
+          {(() => {
+            const yearlyValues = years.map(year =>
+              investments.filter(inv => inv.dateInvested?.startsWith(year))
+                .reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0)
+            );
+            
+            const maxValue = Math.max(...yearlyValues);
+            const minValue = Math.min(...yearlyValues.filter(v => v > 0)) || 0;
+            const maxYear = years[yearlyValues.indexOf(maxValue)];
+            const minYear = yearlyValues.some(v => v > 0) ? years[yearlyValues.indexOf(minValue)] : null;
+            
+            return (
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between',
+                marginTop: 16
+              }}>
+                {maxValue > 0 && (
+                  <View style={{ alignItems: 'flex-start' }}>
+                    <Text style={{ color: colors.medium, fontSize: 12 }}>Max ({maxYear})</Text>
+                    <Text style={{ 
+                      color: colors.dark, 
+                      fontWeight: 'bold', 
+                      fontSize: 16 
+                    }}>
+                      ₹{maxValue.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                )}
+                
+                {minValue > 0 && (
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ color: colors.medium, fontSize: 12 }}>Min ({minYear})</Text>
+                    <Text style={{ 
+                      color: colors.dark, 
+                      fontWeight: 'bold', 
+                      fontSize: 16 
+                    }}>
+                      ₹{minValue.toLocaleString('en-IN')}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+        </View>
+        {/* Asset Allocation Cards */}
+        <Text style={[styles.sectionTitle, { color: colors.dark }]}>Asset Allocation</Text>
+        {/* Overall Profit/Loss Card */}
+        <View style={[styles.profitLossCard, { backgroundColor: colors.card, ...shadows.sm }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profitLossLabel, { color: colors.medium }]}>Overall Profit/Loss</Text>
+            <Text style={[styles.profitLossValue, { color: totalProfit >= 0 ? '#10b981' : '#ef4444' }]}>
+              ₹{totalProfit.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+            </Text>
+          </View>
+          <View style={[
+            styles.percentageBadge, 
+            { backgroundColor: totalProfitPercentage >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)' }
+          ]}>
+            <Text style={{ 
+              color: totalProfitPercentage >= 0 ? '#10b981' : '#ef4444',
+              fontWeight: 'bold'
+            }}>
+              {totalProfitPercentage >= 0 ? '+' : ''}{totalProfitPercentage.toFixed(2)}%
+            </Text>
+          </View>
+        </View>
+        
+        {/* Asset Allocation Grid - Redesigned */}
+        <View style={{ marginVertical: 10 }}>
+          <Text style={[styles.sectionTitle, { color: colors.dark, marginBottom: 16 }]}>Asset Portfolio</Text>
+          
+          <View style={{ 
+            flexDirection: 'row', 
+            flexWrap: 'wrap', 
+            justifyContent: 'space-between',
+            paddingHorizontal: 4,
+          }}>
+            {assetAlloc.map((asset, idx) => {
+              // Find all investments of this type
+              const assetInvestments = investments.filter(inv => 
+                inv.investmentType === asset.type || inv.type === asset.type
+              );
+              
+              // Calculate total invested amount and current value for this asset type
+              const investedAmount = assetInvestments.reduce((sum, inv) => sum + Number(inv.amount), 0);
+              const currentValue = assetInvestments.reduce((sum, inv) => sum + Number(inv.currentValue || inv.amount), 0);
+              
+              // Calculate profit/loss and percentage
+              const profit = currentValue - investedAmount;
+              const profitPercentage = investedAmount > 0 ? (profit / investedAmount) * 100 : 0;
+              
+              // Calculate percentage of total portfolio
+              const portfolioPercentage = totalValue > 0 ? (investedAmount / totalValue) * 100 : 0;
+              
+              return (
+                <View key={asset.type} style={{ width: '48%', marginBottom: 16 }}>
+                  <TouchableOpacity 
+                    style={{
+                      backgroundColor: colors.card,
+                      borderRadius: 16,
+                      padding: 16,
+                      ...shadows.sm,
+                      minHeight: 150,
+                      position: 'relative',
+                    }}
+                    onPress={() => {
+                      // Only show update modal if there are investments of this type
+                      if (assetInvestments.length > 0) {
+                        setSelectedAssetType(asset.type);
+                        setShowUpdateModal(true);
+                      } else {
+                        alert(`No ${asset.type} investments to update.`);
+                      }
+                    }}
+                  >
+                    <View style={{ 
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: 14
+                    }}>
+                      <View style={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 12, 
+                        backgroundColor: asset.color + '20',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginRight: 10
+                      }}> 
+                        <Ionicons name={asset.icon} size={20} color={asset.color} />
+                      </View>
+                      
+                      <Text style={{ 
+                        fontSize: 16, 
+                        fontWeight: '600', 
+                        color: colors.dark,
+                        flex: 1,
+                      }}>
+                        {asset.type}
+                      </Text>
+                    </View>
+                    
+                    <Text style={{ 
+                      fontSize: 22, 
+                      fontWeight: 'bold', 
+                      color: colors.primary, 
+                      marginBottom: 10 
+                    }}>
+                      ₹{currentValue.toLocaleString('en-IN')}
+                    </Text>
+                    
+                    {investedAmount > 0 && (
+                      <>
+                        <View style={{ 
+                          flexDirection: 'row', 
+                          alignItems: 'center', 
+                          justifyContent: 'space-between'
+                        }}>
+                          <View style={{ 
+                            backgroundColor: profitPercentage >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                          }}>
+                            <Ionicons 
+                              name={profitPercentage >= 0 ? "trending-up" : "trending-down"} 
+                              size={14} 
+                              color={profitPercentage >= 0 ? '#10b981' : '#ef4444'} 
+                              style={{ marginRight: 4 }}
+                            />
+                            <Text style={{ 
+                              fontSize: 13, 
+                              fontWeight: '600',
+                              color: profitPercentage >= 0 ? '#10b981' : '#ef4444',
+                            }}>
+                              {profitPercentage >= 0 ? '+' : ''}{profitPercentage.toFixed(1)}%
+                            </Text>
+                          </View>
+                        </View>
+                      </>
+                    )}
+                    
+                    {assetInvestments.length > 0 && (
+                      <TouchableOpacity 
+                        style={{ 
+                          backgroundColor: '#38bdf8', // Changed from colors.primary to sky blue
+                          width: 28,
+                          height: 28,
+                          borderRadius: 14,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          position: 'absolute',
+                          bottom: 16,
+                          right: 16,
+                        }}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          setSelectedAssetType(asset.type);
+                          setShowUpdateModal(true);
+                        }}
+                      >
+                        <Ionicons name="refresh-outline" size={16} color={colors.white} />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
         </View>
         {/* Pie Chart for Asset Allocation */}
         <Text style={[styles.sectionTitle, { color: colors.dark }]}>Asset Allocation Breakdown</Text>
@@ -468,60 +1232,247 @@ export default function Investment() {
           showValuesOnAbsolute={false}
           center={[0, 0]}
         />
-        {/* Toggleable Line Graph for Each Asset Type */}
-        <Text style={[styles.sectionTitle, { color: colors.dark }]}>Asset Type Trend</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
-          {assetAlloc.map((asset, idx) => (
-            <TouchableOpacity
-              key={asset.type}
-              style={{
-                backgroundColor: selectedAssetIdx === idx ? asset.color : isDarkMode ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
-                paddingVertical: 8,
-                paddingHorizontal: 14,
-                borderRadius: 20,
-                marginRight: 8,
-                marginBottom: 8,
+        {/* Asset Type Trend - Redesigned */}
+        <View style={{
+          backgroundColor: colors.card,
+          borderRadius: 16,
+          padding: 20,
+          marginTop: 24,
+          marginBottom: 120,
+          ...shadows.sm
+        }}>
+          <Text style={{ 
+            fontSize: 18, 
+            fontWeight: '600', 
+            color: colors.dark,
+            marginBottom: 16
+          }}>
+            Asset Type Trend
+          </Text>
+
+          {/* Asset Type Selector */}
+          <ScrollView 
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ 
+              paddingBottom: 10,
+              marginBottom: 10 
+            }}
+          >
+            {assetAlloc.map((asset, idx) => (
+              <TouchableOpacity
+                key={asset.type}
+                style={{
+                  backgroundColor: selectedAssetIdx === idx 
+                    ? asset.color 
+                    : isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.03)',
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: 24,
+                  marginRight: 10,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  ...selectedAssetIdx === idx ? shadows.sm : {}
+                }}
+                onPress={() => setSelectedAssetIdx(idx)}
+              >
+                <View style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  backgroundColor: selectedAssetIdx === idx 
+                    ? 'rgba(255,255,255,0.2)' 
+                    : (asset.color + '20'),
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginRight: 8
+                }}>
+                  <Ionicons 
+                    name={asset.icon} 
+                    size={16} 
+                    color={selectedAssetIdx === idx ? '#fff' : asset.color} 
+                  />
+                </View>
+                <Text style={{ 
+                  color: selectedAssetIdx === idx ? '#fff' : isDarkMode ? colors.light : colors.dark, 
+                  fontWeight: '600', 
+                  fontSize: 14 
+                }}>
+                  {asset.type}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          
+          {/* Asset Summary */}
+          {(() => {
+            const selectedAsset = assetAlloc[selectedAssetIdx];
+            const assetInvestments = investments.filter(inv => 
+              inv.investmentType === selectedAsset.type || inv.type === selectedAsset.type
+            );
+            
+            const totalInvested = assetInvestments.reduce((sum, inv) => sum + Number(inv.amount), 0);
+            const currentValue = assetInvestments.reduce((sum, inv) => sum + Number(inv.currentValue || inv.amount), 0);
+            const profit = currentValue - totalInvested;
+            const profitPercentage = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
+            
+            return (
+              <View style={{
                 flexDirection: 'row',
-                alignItems: 'center',
-              }}
-              onPress={() => setSelectedAssetIdx(idx)}
-            >
-              <Ionicons name={asset.icon} size={16} color={selectedAssetIdx === idx ? '#fff' : asset.color} style={{ marginRight: 6 }} />
-              <Text style={{ color: selectedAssetIdx === idx ? '#fff' : isDarkMode ? colors.light : '#222', fontWeight: 'bold', fontSize: 14 }}>{asset.type}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <LineChart
-          data={{
-            labels: years,
-            datasets: [
-              {
-                data: assetYearData[selectedAssetIdx],
-                color: () => assetAlloc[selectedAssetIdx]?.color || colors.primary,
-                strokeWidth: 2,
+                justifyContent: 'space-between',
+                marginBottom: 20,
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                borderRadius: 12,
+                padding: 16
+              }}>
+                <View>
+                  <Text style={{ fontSize: 13, color: colors.medium, marginBottom: 4 }}>Total Invested</Text>
+                  <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.dark }}>
+                    ₹{totalInvested.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                
+                {totalInvested > 0 && (
+                  <View style={{
+                    backgroundColor: profitPercentage >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 16,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    alignSelf: 'flex-start'
+                  }}>
+                    <Ionicons 
+                      name={profitPercentage >= 0 ? "trending-up" : "trending-down"} 
+                      size={16} 
+                      color={profitPercentage >= 0 ? '#10b981' : '#ef4444'} 
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={{ 
+                      fontSize: 14, 
+                      fontWeight: '600',
+                      color: profitPercentage >= 0 ? '#10b981' : '#ef4444',
+                    }}>
+                      {profitPercentage >= 0 ? '+' : ''}{profitPercentage.toFixed(1)}%
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
+          
+          {/* Line Chart */}
+          <LineChart
+            data={{
+              labels: years,
+              datasets: [
+                {
+                  data: assetYearData[selectedAssetIdx]?.filter(value => value !== undefined) || [0],
+                  color: () => assetAlloc[selectedAssetIdx]?.color || colors.primary,
+                  strokeWidth: 2.5,
+                },
+              ],
+            }}
+            width={Dimensions.get('window').width - 80}
+            height={220}
+            yAxisLabel="₹"
+            chartConfig={{
+              backgroundColor: 'transparent',
+              backgroundGradientFrom: colors.card,
+              backgroundGradientTo: colors.card,
+              decimalPlaces: 0,
+              color: (opacity = 1) => assetAlloc[selectedAssetIdx]?.color || colors.primary,
+              labelColor: (opacity = 1) => `rgba(${isDarkMode ? '255, 255, 255' : '31, 41, 55'}, ${opacity})`,
+              style: { borderRadius: 16 },
+              propsForDots: {
+                r: '6',
+                strokeWidth: '2',
+                stroke: assetAlloc[selectedAssetIdx]?.color || colors.primary,
               },
-            ],
-          }}
-          width={Dimensions.get('window').width - 40}
-          height={200}
-          yAxisLabel="₹"
-          chartConfig={{
-            backgroundColor: colors.card,
-            backgroundGradientFrom: colors.card,
-            backgroundGradientTo: colors.card,
-            decimalPlaces: 0,
-            color: (opacity = 1) => (assetAlloc[selectedAssetIdx]?.color || colors.primary) + Math.floor(opacity * 255).toString(16),
-            labelColor: (opacity = 1) => `rgba(${isDarkMode ? '255, 255, 255' : '31, 41, 55'}, ${opacity})`,
-            style: { borderRadius: 16 },
-            propsForDots: {
-              r: '5',
-              strokeWidth: '2',
-              stroke: assetAlloc[selectedAssetIdx]?.color || colors.primary,
-            },
-          }}
-          bezier
-          style={{ marginVertical: 8, borderRadius: 12, ...shadows.sm }}
-        />
+              propsForBackgroundLines: {
+                strokeDasharray: '6, 6',
+                stroke: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+              },
+              fillShadowGradient: assetAlloc[selectedAssetIdx]?.color || colors.primary,
+              fillShadowGradientOpacity: 0.2,
+            }}
+            bezier
+            withVerticalLines={false}
+            withHorizontalLines={true}
+            withInnerLines={false}
+            withOuterLines={true}
+            style={{ 
+              borderRadius: 8,
+              marginBottom: 10
+            }}
+          />
+          
+          {/* Year Range Stats */}
+          {(() => {
+            const yearData = assetYearData[selectedAssetIdx] || [0];
+            const yearValues = yearData.filter(v => v > 0);
+            
+            // Skip if no data
+            if (yearValues.length === 0) {
+              return (
+                <View style={{
+                  padding: 16,
+                  alignItems: 'center',
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  borderRadius: 12,
+                  marginTop: 15
+                }}>
+                  <Text style={{ color: colors.medium, fontSize: 14 }}>No investment data available</Text>
+                </View>
+              );
+            }
+            
+            const startVal = yearValues[0] || 0;
+            const endVal = yearValues[yearValues.length - 1] || 0;
+            const maxVal = Math.max(...yearValues);
+            const maxYear = years[yearData.indexOf(maxVal)];
+            
+            // Calculate growth
+            const growth = startVal > 0 ? ((endVal - startVal) / startVal) * 100 : 0;
+            
+            return (
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginTop: 20,
+              }}>
+                <View style={{
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  borderRadius: 12,
+                  padding: 12,
+                  flex: 1,
+                  marginRight: 8
+                }}>
+                  <Text style={{ fontSize: 13, color: colors.medium, marginBottom: 2 }}>Peak ({maxYear})</Text>
+                  <Text style={{ fontSize: 16, fontWeight: 'bold', color: colors.dark }}>
+                    ₹{maxVal.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+                
+                <View style={{
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  borderRadius: 12,
+                  padding: 12,
+                  flex: 1
+                }}>
+                  <Text style={{ fontSize: 13, color: colors.medium, marginBottom: 2 }}>Growth</Text>
+                  <Text style={{ 
+                    fontSize: 16, 
+                    fontWeight: 'bold', 
+                    color: growth >= 0 ? '#10b981' : '#ef4444'
+                  }}>
+                    {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
+        </View>
       </ScrollView>
       
       {/* Add Investment Modal */}
@@ -530,7 +1481,11 @@ export default function Investment() {
       </Modal>
       <BottomNavBar />
       {/* Add some empty space at the bottom for better scroll padding */}
-      <View style={{ height: 110 }} />
+      <View style={{ height: 100 }} />
+      {/* Update Investment Modal */}
+      <Modal visible={showUpdateModal} animationType="slide" onRequestClose={() => setShowUpdateModal(false)}>
+        <UpdateInvestmentValueForm onClose={() => setShowUpdateModal(false)} onUpdated={fetchInvestments} assetType={selectedAssetType} />
+      </Modal>
     </>
   );
 }
@@ -596,6 +1551,29 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profitLossCard: {
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  profitLossLabel: {
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  profitLossValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  percentageBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
