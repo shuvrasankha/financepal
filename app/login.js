@@ -11,9 +11,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../firebase';
+import { persistentSignIn, getStoredAuthToken } from '../utils/authUtils';
 import styles from '../styles/LoginStyles';
 
 export default function Login() {
@@ -33,11 +33,27 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Check for any stored auth tokens first
+    const checkStoredAuth = async () => {
+      try {
+        const token = await getStoredAuthToken();
+        if (token && auth.currentUser) {
+          router.replace('/');
+        }
+      } catch (error) {
+        console.error('Error checking stored auth:', error);
+      }
+    };
+    
+    checkStoredAuth();
+    
+    // Also listen for auth state changes
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         router.replace('/');
       }
     });
+    
     return () => unsubscribe();
   }, []);
 
@@ -58,7 +74,8 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // Use our persistent sign-in method instead of regular signInWithEmailAndPassword
+      await persistentSignIn(email, password);
       setShowSuccess(true); // Show success modal instead of immediate navigation
     } catch (e) {
       if (e.code === 'auth/user-not-found') {

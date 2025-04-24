@@ -266,7 +266,7 @@ export default function Home() {
   // Generate default profile image with user's initials
   const generateInitialsImage = () => {
     const initial = userName.charAt(0) || '?';
-    return `https://ui-avatars.com/api/?name=${initial}&size=150&background=${Theme.colors.primary.replace('#','')}&color=ffffff`;
+    return `https://ui-avatars.com/api/?name=${initial}&size=150&background=8B5CF6&color=ffffff`;
   };
 
   // Year selector component

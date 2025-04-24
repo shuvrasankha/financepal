@@ -88,6 +88,7 @@ export const ErrorProvider = ({ children }) => {
 const ErrorToast = ({ message, type, onDismiss }) => {
   const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { isDarkMode } = useTheme();
   
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -107,26 +108,29 @@ const ErrorToast = ({ message, type, onDismiss }) => {
 
   // Get background color and icon based on error type
   const getToastStyles = () => {
+    // Enhanced colors for dark mode to ensure better visibility
+    const getColor = (lightColor, darkColor) => isDarkMode ? darkColor : lightColor;
+    
     switch (type) {
       case ERROR_TYPES.ERROR:
         return {
-          backgroundColor: 'rgba(220, 38, 38, 0.9)',
+          backgroundColor: getColor('rgba(220, 38, 38, 0.9)', 'rgba(248, 113, 113, 0.9)'),
           icon: 'alert-circle',
         };
       case ERROR_TYPES.WARNING:
         return {
-          backgroundColor: 'rgba(245, 158, 11, 0.9)',
+          backgroundColor: getColor('rgba(245, 158, 11, 0.9)', 'rgba(251, 191, 36, 0.9)'),
           icon: 'warning',
         };
       case ERROR_TYPES.SUCCESS:
         return {
-          backgroundColor: 'rgba(16, 185, 129, 0.9)',
+          backgroundColor: getColor('rgba(16, 185, 129, 0.9)', 'rgba(52, 211, 153, 0.9)'),
           icon: 'checkmark-circle',
         };
       case ERROR_TYPES.INFO:
       default:
         return {
-          backgroundColor: 'rgba(59, 130, 246, 0.9)',
+          backgroundColor: getColor('rgba(59, 130, 246, 0.9)', 'rgba(96, 165, 250, 0.9)'),
           icon: 'information-circle',
         };
     }

@@ -2,23 +2,25 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Theme from '../../constants/Theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
-/**
- * Reusable Card component with optional title, icon, and action button
- */
 const Card = ({
-  title,
-  titleIcon,
-  actionText,
-  actionIcon,
-  onActionPress,
   children,
-  style,
-  contentStyle,
+  title,
+  subtitle,
+  icon,
+  iconColor,
+  onPress,
+  variant = 'default', // default, primary, success, error, warning, info
+  rightAction,
   elevated = true,
-  variant = 'default',
+  style,
   ...props
 }) => {
+  const { isDarkMode } = useTheme();
+  const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
+  const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
+  
   // Get variant-specific styles
   const getVariantStyle = () => {
     switch (variant) {
@@ -36,56 +38,91 @@ const Card = ({
         return null;
     }
   };
+  
+  // Get the color for the variant
+  const getVariantColor = () => {
+    switch (variant) {
+      case 'primary':
+        return colors.primary;
+      case 'success':
+        return colors.success;
+      case 'error':
+        return colors.error;
+      case 'warning':
+        return colors.warning;
+      case 'info':
+        return colors.info;
+      default:
+        return colors.dark;
+    }
+  };
 
+  const variantStyle = getVariantStyle();
+  const variantColor = getVariantColor();
+  
+  // Wrap the card in a TouchableOpacity if onPress is provided
+  const CardWrapper = onPress ? TouchableOpacity : View;
+  const wrapperProps = onPress ? { 
+    onPress, 
+    activeOpacity: 0.7,
+    ...props 
+  } : props;
+  
   return (
-    <View 
+    <CardWrapper 
       style={[
         styles.card,
         elevated && styles.cardElevated,
-        getVariantStyle(),
-        style,
+        elevated && isDarkMode && { 
+          shadowColor: '#000',
+          shadowOpacity: 0.3,
+          borderColor: colors.borderLight,
+          borderWidth: 1
+        },
+        variantStyle,
+        { backgroundColor: colors.card },
+        style
       ]}
-      {...props}
+      {...wrapperProps}
     >
-      {(title || actionText) && (
+      {/* Card Header (if title or subtitle provided) */}
+      {(title || subtitle) && (
         <View style={styles.cardHeader}>
-          {title && (
-            <View style={styles.titleContainer}>
-              {titleIcon && (
-                <Ionicons 
-                  name={titleIcon} 
-                  size={18} 
-                  color={Theme.colors.primary}
-                  style={styles.titleIcon} 
-                />
-              )}
-              <Text style={styles.cardTitle}>{title}</Text>
-            </View>
-          )}
+          <View style={styles.titleContainer}>
+            {icon && (
+              <Ionicons 
+                name={icon} 
+                size={18} 
+                color={iconColor || variantColor} 
+                style={styles.titleIcon} 
+              />
+            )}
+            {title && (
+              <Text style={[styles.title, { color: colors.dark }]}>
+                {title}
+              </Text>
+            )}
+          </View>
           
-          {actionText && (
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={onActionPress}
-            >
-              <Text style={styles.actionText}>{actionText}</Text>
-              {actionIcon && (
-                <Ionicons 
-                  name={actionIcon} 
-                  size={14} 
-                  color={Theme.colors.primary}
-                  style={styles.actionIcon} 
-                />
-              )}
-            </TouchableOpacity>
+          {/* Optional right action (e.g., button, icon) */}
+          {rightAction && (
+            <View>
+              {rightAction}
+            </View>
           )}
         </View>
       )}
       
-      <View style={[styles.cardContent, contentStyle]}>
-        {children}
-      </View>
-    </View>
+      {/* Subtitle */}
+      {subtitle && (
+        <Text style={[styles.subtitle, { color: colors.medium }]}>
+          {subtitle}
+        </Text>
+      )}
+      
+      {/* Card Content */}
+      {children}
+    </CardWrapper>
   );
 };
 
