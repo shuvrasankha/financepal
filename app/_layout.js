@@ -32,24 +32,39 @@ function AppNavigator() {
       setUser(currentUser);
 
       if (currentUser) {
+        // Add a small delay to ensure Firebase is fully initialized
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Check if app lock is enabled
         const appLockEnabled = await AsyncStorage.getItem('appLockEnabled');
+        console.log('App lock value in storage:', appLockEnabled);
+        
         if (appLockEnabled === 'true') {
-          // Check if device has biometric hardware before attempting authentication
-          const compatible = await LocalAuthentication.hasHardwareAsync();
-          if (!compatible) {
-            console.log('Device does not support biometric authentication');
-            setLocked(false);
-            setLoading(false);
-            return;
-          }
+          // Check device biometric capability first
+          const checkBiometricCapability = async () => {
+            const compatible = await LocalAuthentication.hasHardwareAsync();
+            const enrolled = compatible ? await LocalAuthentication.isEnrolledAsync() : false;
+            console.log('Biometric capability:', { compatible, enrolled });
+            
+            // If capabilities changed, update storage
+            if (!compatible || !enrolled) {
+              console.log('Device not compatible with biometrics or no biometrics enrolled');
+              setLocked(false);
+              setLoading(false);
+              
+              // Optionally disable app lock if device is no longer compatible
+              if (appLockEnabled === 'true') {
+                console.log('Disabling app lock due to lack of biometric capability');
+                await AsyncStorage.setItem('appLockEnabled', 'false');
+              }
+              return false;
+            }
+            return true;
+          };
           
-          // Check if user has enrolled biometrics
-          const enrolled = await LocalAuthentication.isEnrolledAsync();
-          if (!enrolled) {
-            console.log('No biometrics enrolled on this device');
-            setLocked(false);
-            setLoading(false);
+          // Skip authentication if device doesn't support biometrics
+          const canAuthenticate = await checkBiometricCapability();
+          if (!canAuthenticate) {
             return;
           }
           
@@ -62,7 +77,19 @@ function AppNavigator() {
             });
             
             console.log('Authentication result:', authResult);
-            setLocked(!authResult.success);
+            
+            // Be more specific about auth failures vs cancellations
+            if (authResult.success) {
+              setLocked(false);
+            } else if (authResult.error === 'user_cancel') {
+              // User cancelled, keep locked
+              console.log('User cancelled authentication');
+              setLocked(true);
+            } else {
+              // Hardware/system error, don't lock user out
+              console.log('Auth error:', authResult.error);
+              setLocked(false);
+            }
             setLoading(false);
           } catch (error) {
             console.log('Error with local authentication:', error);
@@ -118,10 +145,24 @@ function AppNavigator() {
                     disableDeviceFallback: false,
                   });
                   
-                  setLocked(!authResult.success);
+                  console.log('Retry authentication result:', authResult);
+                  
+                  // Be more specific about auth failures vs cancellations
+                  if (authResult.success) {
+                    setLocked(false);
+                  } else if (authResult.error === 'user_cancel') {
+                    // User cancelled, keep locked
+                    console.log('User cancelled authentication');
+                    setLocked(true);
+                  } else {
+                    // Hardware/system error, don't lock user out
+                    console.log('Auth error:', authResult.error);
+                    setLocked(false);
+                  }
                 } catch (error) {
                   console.log('Error with retry authentication:', error);
-                  // In case of error, keep the locked state
+                  // In case of error, unlock to prevent permanent lockout
+                  setLocked(false);
                 }
               }}
             >

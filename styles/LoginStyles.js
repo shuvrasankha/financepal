@@ -25,6 +25,17 @@ export default StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
+  // Add loading styles
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: Theme.spacing.md,
+    color: colors.textLight,
+    fontSize: Theme.typography.fontSizes.md,
+  },
+  // Rest of the styles
   header: {
     marginBottom: Theme.spacing.xl + Theme.spacing.sm,
     alignItems: 'center',

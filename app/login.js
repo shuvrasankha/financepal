@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '../firebase';
-import { persistentSignIn, getStoredAuthToken } from '../utils/authUtils';
+import { persistentSignIn, getStoredAuthToken, tryAutoLogin } from '../utils/authUtils';
 import styles from '../styles/LoginStyles';
 
 export default function Login() {
@@ -30,32 +30,68 @@ export default function Login() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(true); // Keep this true initially
 
   useEffect(() => {
-    // Check for any stored auth tokens first
-    const checkStoredAuth = async () => {
+    let isMounted = true; // Flag to prevent state updates on unmounted component
+
+    // Initial check function - simplified
+    const performInitialCheck = async () => {
       try {
-        const token = await getStoredAuthToken();
-        if (token && auth.currentUser) {
-          router.replace('/');
+        // Give Firebase persistence a chance to initialize
+        // tryAutoLogin already includes a delay, so we call it.
+        // We don't need its return value to navigate, just to know if we should stop checking early.
+        const couldAutoLogin = await tryAutoLogin();
+        
+        // If tryAutoLogin returns false, and the component is still mounted,
+        // it means persistence likely didn't restore a session quickly.
+        // We can stop the initial loading indicator sooner in this case.
+        // The onAuthStateChanged listener will still be the final arbiter.
+        if (!couldAutoLogin && isMounted) {
+           console.log('[Login] tryAutoLogin returned false, likely no persisted session.');
+           // We still wait for onAuthStateChanged, but can potentially stop the main spinner
+           // setCheckingAuth(false); // Let onAuthStateChanged handle this
         }
+        // If tryAutoLogin returned true, we *still* wait for onAuthStateChanged to confirm.
+        
       } catch (error) {
-        console.error('Error checking stored auth:', error);
+        console.error('[Login] Error during initial auth check:', error);
+        if (isMounted) {
+          setCheckingAuth(false); // Stop loading on error
+          setLoading(false);
+        }
       }
     };
-    
-    checkStoredAuth();
-    
-    // Also listen for auth state changes
+
+    performInitialCheck();
+
+    // The primary listener for auth state
     const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!isMounted) return; // Don't update state if unmounted
+
+      console.log(`[Login] onAuthStateChanged triggered. User: ${user ? user.uid : 'null'}`);
+      
       if (user) {
-        router.replace('/');
+        // User is confirmed logged in by Firebase
+        console.log('[Login] User confirmed by listener. Navigating to home.');
+        setCheckingAuth(false); // Done checking
+        setLoading(false);
+        router.replace('/'); // Navigate only when listener confirms
+      } else {
+        // User is confirmed logged out by Firebase
+        console.log('[Login] No user confirmed by listener. Showing login screen.');
+        setCheckingAuth(false); // Done checking, show login form
+        setLoading(false);
       }
     });
-    
-    return () => unsubscribe();
-  }, []);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []); // Run only once on mount
 
   const handleLogin = async () => {
     setError({ email: '', password: '', general: '' });
@@ -74,14 +110,21 @@ export default function Login() {
 
     setLoading(true);
     try {
-      // Use our persistent sign-in method instead of regular signInWithEmailAndPassword
+      console.log(`[Login] Attempting login on platform: ${Platform.OS}`);
+      // Use our simplified persistent sign-in method
       await persistentSignIn(email, password);
-      setShowSuccess(true); // Show success modal instead of immediate navigation
+      console.log('[Login] Login successful, waiting for auth state to update');
+      setShowSuccess(true);
     } catch (e) {
+      console.error('[Login] Login error:', e);
       if (e.code === 'auth/user-not-found') {
         setErrorMessage('No account found with this email');
       } else if (e.code === 'auth/wrong-password') {
         setErrorMessage('Incorrect password');
+      } else if (e.code === 'auth/invalid-credential') {
+        setErrorMessage('Invalid email or password');
+      } else if (e.code === 'auth/too-many-requests') {
+        setErrorMessage('Too many failed login attempts. Please try again later.');
       } else {
         setErrorMessage('Login failed. Please try again.');
       }
@@ -91,7 +134,7 @@ export default function Login() {
     }
   };
 
-  // Add success modal component
+  // Success modal component
   const SuccessModal = () => (
     <Modal
       visible={showSuccess}
@@ -148,6 +191,17 @@ export default function Login() {
     </Modal>
   );
 
+  // Loading indicator based on checkingAuth state
+  if (checkingAuth) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#8b5cf6" />
+        <Text style={styles.loadingText}>Checking login status...</Text>
+      </View>
+    );
+  }
+
+  // Render the login form if not checking auth
   return (
     <>
       <KeyboardAvoidingView 

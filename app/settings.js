@@ -66,9 +66,20 @@ export default function Settings() {
     const checkAppLock = async () => {
       try {
         const appLockEnabled = await AsyncStorage.getItem('appLockEnabled');
-        setLockEnabled(appLockEnabled === 'true');
+        console.log('App lock value in storage:', appLockEnabled);
+        
+        // Ensure value is strictly 'true' or reset it
+        if (appLockEnabled !== 'true' && appLockEnabled !== 'false') {
+          console.log('Resetting invalid app lock value');
+          await AsyncStorage.setItem('appLockEnabled', 'false');
+          setLockEnabled(false);
+        } else {
+          setLockEnabled(appLockEnabled === 'true');
+        }
       } catch (err) {
         console.log('Error checking app lock:', err);
+        // In case of error, make sure to reset to unlocked state
+        setLockEnabled(false);
       }
     };
     
@@ -83,6 +94,7 @@ export default function Settings() {
         // Check if device has biometric hardware
         const compatible = await LocalAuthentication.hasHardwareAsync();
         if (!compatible) {
+          console.log('Device does not support biometric authentication');
           Alert.alert(
             'Incompatible Device',
             'Your device doesn\'t support biometric authentication.'
@@ -93,6 +105,7 @@ export default function Settings() {
         // Check if user has enrolled biometrics
         const enrolled = await LocalAuthentication.isEnrolledAsync();
         if (!enrolled) {
+          console.log('No biometrics enrolled on this device');
           Alert.alert(
             'Biometrics Not Set Up',
             'Please set up biometric authentication in your device settings first.'
@@ -107,17 +120,29 @@ export default function Settings() {
           disableDeviceFallback: false,
         });
         
+        console.log('Authentication test result:', authTest);
+        
         if (!authTest.success) {
-          // User cancelled or authentication failed
-          Alert.alert(
-            'Authentication Failed',
-            'Could not verify biometrics. App lock was not enabled.'
-          );
+          // Be more specific about auth failures vs cancellations
+          if (authTest.error === 'user_cancel') {
+            console.log('User cancelled authentication');
+            Alert.alert(
+              'Authentication Cancelled',
+              'You cancelled the authentication. App lock was not enabled.'
+            );
+          } else {
+            console.log('Authentication failed:', authTest.error);
+            Alert.alert(
+              'Authentication Failed',
+              'Could not verify biometrics. App lock was not enabled.'
+            );
+          }
           return;
         }
       }
       
       // If we get here, either disabling or successfully authenticated
+      console.log('Setting appLockEnabled to:', value ? 'true' : 'false');
       await AsyncStorage.setItem('appLockEnabled', value ? 'true' : 'false');
       setLockEnabled(value);
       
