@@ -29,6 +29,11 @@ const ExpenseAnalysis = () => {
   const [expenses, setExpenses] = useState([]);
   const [viewMode, setViewMode] = useState('monthly');
   const [exporting, setExporting] = useState(false);
+  const [showForecasting, setShowForecasting] = useState(false);
+  const [forecastData, setForecastData] = useState({
+    nextMonth: { total: 0, categories: {} },
+    nextThreeMonths: { total: 0, categories: {} }
+  });
   const [summaryData, setSummaryData] = useState({
     monthly: {
       data: [],
@@ -83,6 +88,9 @@ const ExpenseAnalysis = () => {
         
         // Process budget insights
         processBudgetInsights(data);
+        
+        // Process forecast data
+        processForecastData();
       } catch (e) {
         console.error('Error fetching expenses:', e);
         setError('Failed to load expense analysis. Please try again later.');
@@ -287,6 +295,131 @@ const ExpenseAnalysis = () => {
       overBudgetCategories,
       underBudgetCategories
     });
+  };
+
+  // Process data for forecasting
+  const processForecastData = () => {
+    // Need at least 3 months of data for meaningful forecasting
+    if (expenses.length < 10) {
+      return;
+    }
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    // Get historical spending patterns (last 6 months for monthly forecasting)
+    const sixMonthsAgo = new Date(currentYear, currentMonth - 6, 1);
+    
+    // Gather monthly spending totals and by category for the last 6 months
+    const monthlySpendings = [];
+    const monthlyCategorySpendings = {};
+    
+    // Prepare monthly data for the last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const targetMonth = new Date(currentYear, currentMonth - i, 1);
+      const targetMonthEnd = new Date(currentYear, currentMonth - i + 1, 0);
+      
+      const monthExpenses = expenses.filter(exp => 
+        exp.date >= targetMonth && exp.date <= targetMonthEnd
+      );
+      
+      const total = monthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+      monthlySpendings.push(total);
+      
+      // Track spending by category
+      monthExpenses.forEach(exp => {
+        if (exp.category) {
+          if (!monthlyCategorySpendings[exp.category]) {
+            monthlyCategorySpendings[exp.category] = [];
+          }
+          // Append this month's spending for this category
+          if (monthlyCategorySpendings[exp.category].length < 6) {
+            monthlyCategorySpendings[exp.category].push(exp.amount);
+          }
+        }
+      });
+    }
+    
+    // Calculate next month forecast based on trends
+    // Use weighted average: more weight to recent months
+    const weights = [0.05, 0.1, 0.15, 0.2, 0.25, 0.25]; // Weights add up to 1
+    
+    // For total monthly spending
+    let nextMonthTotal = 0;
+    for (let i = 0; i < 6; i++) {
+      if (monthlySpendings[i]) {
+        nextMonthTotal += monthlySpendings[i] * weights[i];
+      }
+    }
+    
+    // For category spending
+    const nextMonthCategories = {};
+    Object.keys(monthlyCategorySpendings).forEach(category => {
+      const categoryData = monthlyCategorySpendings[category];
+      if (categoryData.length > 0) {
+        let nextMonthCategory = 0;
+        
+        // Apply weighted average to available data
+        for (let i = 0; i < categoryData.length; i++) {
+          const idx = 6 - categoryData.length + i;
+          nextMonthCategory += categoryData[i] * weights[idx];
+        }
+        
+        nextMonthCategories[category] = Math.round(nextMonthCategory);
+      }
+    });
+    
+    // Calculate next three months (extend the trend)
+    // Use a simple linear regression for the 3-month projection
+    let slope = 0;
+    if (monthlySpendings.length >= 3) {
+      let sumXY = 0;
+      let sumX = 0;
+      let sumY = 0;
+      let sumX2 = 0;
+      
+      for (let i = 0; i < monthlySpendings.length; i++) {
+        sumXY += i * monthlySpendings[i];
+        sumX += i;
+        sumY += monthlySpendings[i];
+        sumX2 += i * i;
+      }
+      
+      const n = monthlySpendings.length;
+      slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    }
+    
+    // Project three months based on trend
+    const nextThreeMonthsTotal = Math.round(nextMonthTotal + slope * 3);
+    
+    // For categories, apply similar growth/reduction rate
+    const nextThreeMonthsCategories = {};
+    Object.keys(nextMonthCategories).forEach(category => {
+      // Apply a conservative growth estimate based on overall trend
+      if (slope > 0) {
+        // If spending is increasing, increase category spending proportionally
+        nextThreeMonthsCategories[category] = Math.round(nextMonthCategories[category] * (1 + (slope / nextMonthTotal) * 3));
+      } else {
+        // If spending is decreasing or stable, keep conservative estimate
+        nextThreeMonthsCategories[category] = Math.round(nextMonthCategories[category]);
+      }
+    });
+    
+    // Update forecast data state
+    setForecastData({
+      nextMonth: {
+        total: Math.round(nextMonthTotal),
+        categories: nextMonthCategories
+      },
+      nextThreeMonths: {
+        total: nextThreeMonthsTotal,
+        categories: nextThreeMonthsCategories
+      }
+    });
+    
+    // Show the forecasting section
+    setShowForecasting(true);
   };
 
   // Add export functionality
@@ -521,6 +654,125 @@ const ExpenseAnalysis = () => {
                 </View>
               )}
             </View>
+
+            {/* Budget Forecasting Section - Only show in monthly view */}
+            {viewMode === 'monthly' && showForecasting && (
+              <View style={[styles.forecastCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
+                <View style={styles.forecastHeader}>
+                  <Text style={[styles.cardLabel, { color: colors.medium }]}>Budget Forecast</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Ionicons name="analytics-outline" size={20} color={colors.primary} style={{ marginRight: 6 }} />
+                    <Text style={{ fontSize: 13, color: colors.medium }}>Based on spending patterns</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.forecastPeriods}>
+                  {/* Next Month Forecast */}
+                  <View style={[styles.forecastPeriod, { borderRightWidth: 1, borderColor: `${colors.light}80` }]}>
+                    <Text style={[styles.forecastPeriodTitle, { color: colors.dark }]}>Next Month</Text>
+                    <Text style={[styles.forecastAmount, { color: colors.dark }]}>
+                      ₹{new Intl.NumberFormat('en-IN').format(forecastData.nextMonth.total)}
+                    </Text>
+                    
+                    {/* Expected vs Budget comparison */}
+                    {budgetInsights.totalBudget > 0 && (
+                      <View style={[
+                        styles.forecastBudgetIndicator, 
+                        { 
+                          backgroundColor: forecastData.nextMonth.total > budgetInsights.totalBudget 
+                            ? `${colors.error}15` 
+                            : `${colors.success}15` 
+                        }
+                      ]}>
+                        <Text style={{ 
+                          fontSize: 12,
+                          fontWeight: '600',
+                          color: forecastData.nextMonth.total > budgetInsights.totalBudget 
+                            ? colors.error 
+                            : colors.success
+                        }}>
+                          {forecastData.nextMonth.total > budgetInsights.totalBudget 
+                            ? `₹${new Intl.NumberFormat('en-IN').format(forecastData.nextMonth.total - budgetInsights.totalBudget)} over budget` 
+                            : `₹${new Intl.NumberFormat('en-IN').format(budgetInsights.totalBudget - forecastData.nextMonth.total)} under budget`}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  
+                  {/* Three Month Forecast */}
+                  <View style={styles.forecastPeriod}>
+                    <Text style={[styles.forecastPeriodTitle, { color: colors.dark }]}>3-Month Outlook</Text>
+                    <Text style={[styles.forecastAmount, { color: colors.dark }]}>
+                      ₹{new Intl.NumberFormat('en-IN').format(forecastData.nextThreeMonths.total)}
+                    </Text>
+                    
+                    {/* Monthly average */}
+                    <Text style={{ fontSize: 13, color: colors.medium, marginTop: 4 }}>
+                      Avg: ₹{new Intl.NumberFormat('en-IN').format(Math.round(forecastData.nextThreeMonths.total / 3))}/mo
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Top spending categories forecast */}
+                <View style={styles.forecastCategories}>
+                  <Text style={[styles.forecastCategoriesTitle, { color: colors.dark }]}>
+                    Top Categories Forecast
+                  </Text>
+                  
+                  {Object.entries(forecastData.nextMonth.categories)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 3)
+                    .map(([category, amount]) => (
+                      <View key={category} style={styles.forecastCategory}>
+                        <View style={[styles.categoryIcon, { 
+                          backgroundColor: `${colors.primary}20`,
+                          marginRight: 10
+                        }]}>
+                          <Ionicons name={getCategoryIcon(category)} size={18} color={colors.primary} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.forecastCategoryName, { color: colors.dark }]}>{category}</Text>
+                          <Text style={{ fontSize: 13, color: colors.medium }}>
+                            ₹{new Intl.NumberFormat('en-IN').format(amount)}
+                          </Text>
+                        </View>
+                      </View>
+                    ))
+                  }
+                </View>
+                
+                {/* Recommendations based on forecast */}
+                <View style={styles.forecastRecommendations}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                    <Ionicons name="bulb-outline" size={20} color={colors.primary} style={{ marginRight: 8 }} />
+                    <Text style={[styles.forecastRecommendationsTitle, { color: colors.dark }]}>Recommendations</Text>
+                  </View>
+                  
+                  {budgetInsights.totalBudget > 0 && (
+                    <>
+                      {forecastData.nextMonth.total > budgetInsights.totalBudget ? (
+                        <Text style={[styles.forecastAdvice, { color: colors.medium }]}>
+                          Based on your spending patterns, you're likely to exceed your budget next month. 
+                          Consider adjusting your budget or reducing expenses in top categories.
+                        </Text>
+                      ) : (
+                        <Text style={[styles.forecastAdvice, { color: colors.medium }]}>
+                          Your spending is projected to be within budget. Consider allocating excess funds to 
+                          savings or investments.
+                        </Text>
+                      )}
+                    </>
+                  )}
+                  
+                  {/* When no budget is set */}
+                  {budgetInsights.totalBudget === 0 && (
+                    <Text style={[styles.forecastAdvice, { color: colors.medium }]}>
+                      Set a budget to see how your projected spending compares to your financial goals.
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
 
             <View style={[styles.chartCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
               <Text style={[styles.cardLabel, { color: colors.medium }]}>
@@ -971,6 +1223,82 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+  },
+  // Budget Forecasting styles
+  forecastCard: {
+    borderRadius: 16,
+    margin: 16,
+    marginTop: 0,
+    padding: 20,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  forecastHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  forecastPeriods: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  forecastPeriod: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  forecastPeriodTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  forecastAmount: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  forecastBudgetIndicator: {
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+  },
+  forecastCategories: {
+    marginVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 16,
+  },
+  forecastCategoriesTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  forecastCategory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  forecastCategoryName: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  forecastRecommendations: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 16,
+  },
+  forecastRecommendationsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  forecastAdvice: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 4,
   },
 });
 
