@@ -7,7 +7,8 @@ import {
   ActivityIndicator, 
   TouchableOpacity, 
   Dimensions,
-  SafeAreaView 
+  SafeAreaView,
+  Alert
 } from 'react-native';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -18,6 +19,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useError } from '../contexts/ErrorContext';
 import { useBudgets } from '../contexts/BudgetContext';
 import Theme from '../constants/Theme';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -25,6 +28,7 @@ const ExpenseAnalysis = () => {
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
   const [viewMode, setViewMode] = useState('monthly');
+  const [exporting, setExporting] = useState(false);
   const [summaryData, setSummaryData] = useState({
     monthly: {
       data: [],
@@ -283,6 +287,53 @@ const ExpenseAnalysis = () => {
       overBudgetCategories,
       underBudgetCategories
     });
+  };
+
+  // Add export functionality
+  const exportExpensesToCSV = async () => {
+    try {
+      setExporting(true);
+      
+      // Check if sharing is available
+      const isSharingAvailable = await Sharing.isAvailableAsync();
+      if (!isSharingAvailable) {
+        Alert.alert('Error', 'Sharing is not available on this device');
+        setExporting(false);
+        return;
+      }
+      
+      // Create CSV header
+      let csvContent = 'Date,Category,Amount,Description\n';
+      
+      // Add expense data rows
+      expenses.forEach(expense => {
+        const date = expense.date.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+        const category = expense.category || 'Uncategorized';
+        const amount = expense.amount;
+        // Escape description to handle commas, quotes, etc.
+        const description = expense.description 
+          ? `"${expense.description.replace(/"/g, '""')}"` 
+          : '';
+        
+        csvContent += `${date},${category},${amount},${description}\n`;
+      });
+      
+      // Generate a filename with current date
+      const fileName = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
+      const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+      
+      // Write the file
+      await FileSystem.writeAsStringAsync(fileUri, csvContent);
+      
+      // Share the file
+      await Sharing.shareAsync(fileUri);
+      
+      setExporting(false);
+    } catch (error) {
+      console.error('Export error:', error);
+      Alert.alert('Export Failed', 'There was an error exporting your expenses');
+      setExporting(false);
+    }
   };
 
   const renderCategoryList = (categories) => {
@@ -618,6 +669,22 @@ const ExpenseAnalysis = () => {
       </ScrollView>
     </SafeAreaView>
     <BottomNavBar />
+    {/* Export FAB Button */}
+    <TouchableOpacity 
+      style={[
+        styles.exportFAB, 
+        { backgroundColor: colors.primary },
+        exporting && { opacity: 0.7 }
+      ]}
+      onPress={exportExpensesToCSV}
+      disabled={exporting || expenses.length === 0}
+    >
+      {exporting ? (
+        <ActivityIndicator color="#fff" size="small" />
+      ) : (
+        <Ionicons name="download-outline" size={24} color="#fff" />
+      )}
+    </TouchableOpacity>
     {/* Add some empty space at the bottom for better scroll padding */}
     <View style={{ height: 80 }} />
     </>
@@ -889,6 +956,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     paddingHorizontal: 20,
+  },
+  exportFAB: {
+    position: 'absolute',
+    bottom: 100,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
 });
 

@@ -1,7 +1,12 @@
 // firebase.js
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+// Import necessary auth functions including persistence
+import { 
+  initializeAuth, 
+  getReactNativePersistence 
+} from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your Firebase configuration object
 // Make sure all these values are correctly set
@@ -17,7 +22,18 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+
+// Initialize Auth with React Native persistence
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+
+// Initialize Firestore
 const db = getFirestore(app);
+
+// Remove the direct assignment to auth.settings
+// auth.settings = {
+//   appVerificationDisabledForTesting: false,
+// };
 
 export { db, auth };
