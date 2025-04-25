@@ -1191,14 +1191,6 @@ export default function Settings() {
                     </View>
                   )}
                   
-                  <View style={profileModalStyles.profileImageSection}>
-                    <Image
-                      source={{ uri: user?.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent((profileForm.firstName || 'U').charAt(0))}&background=${colors.primary.replace('#', '')}&color=fff&bold=true&size=128` }}
-                      style={profileModalStyles.profileImage}
-                    />
-                    {/* Note: Profile image update would require additional storage handling */}
-                  </View>
-                  
                   <View style={profileModalStyles.inputContainer}>
                     <Text style={[profileModalStyles.inputLabel, { color: colors.dark }]}>
                       First Name <Text style={{ color: colors.error }}>*</Text>
@@ -1717,17 +1709,6 @@ const profileModalStyles = StyleSheet.create({
   errorText: {
     color: '#b91c1c',
     fontSize: 14,
-  },
-  profileImageSection: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 3,
-    borderColor: '#e5e7eb',
   },
   inputContainer: {
     marginBottom: 16,

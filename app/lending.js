@@ -546,7 +546,7 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
       {/* Transactions List */}
       <FlatList
         data={sortedTransactions}
-        keyExtractor={(item, index) => item.id || index.toString()}
+        keyExtractor={(item, index) => `transaction-${item.id || index}`}
         contentContainerStyle={{ paddingBottom: 120 }}
         ListEmptyComponent={() => (
           <View style={{ padding: 24, alignItems: 'center' }}>
