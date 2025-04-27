@@ -31,6 +31,12 @@ FinancePal is a cross-platform personal finance tracker built with [Expo](https:
    eas build --platform ios
    ```
 
+## Download
+
+📱 **Android App**
+- [Download the latest APK](https://github.com/shuvrasankha/financepal/releases/tag/v1.0.0)
+- Minimum Android 7.0 (Nougat) required
+
 ## Project Structure
 - `app/` — Main app code (screens, components)
 - `assets/` — Images, icons, fonts
