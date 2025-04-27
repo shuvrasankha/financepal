@@ -204,16 +204,23 @@ const ContactSelector = ({ onSelectContact }) => {
       }
       
       // Process valid contacts (those with phone numbers)
-      const validContacts = data
-        .filter(contact => contact.phoneNumbers && contact.phoneNumbers.length > 0)
-        .map(contact => ({
-          id: contact.id,
-          name: contact.name || 'Unknown',
-          phoneNumber: contact.phoneNumbers[0]?.number || '',
-          phoneLabel: contact.phoneNumbers[0]?.label || '',
-          initials: getInitials(contact.name || 'Unknown'),
-          imageUri: contact.image?.uri
-        }));
+      const validContacts = [];
+      data.forEach(contact => {
+        if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+          // Create a separate entry for each phone number to avoid duplicate key issues
+          contact.phoneNumbers.forEach((phone, phoneIndex) => {
+            validContacts.push({
+              id: `${contact.id}-${phoneIndex}`, // Create unique ID for each phone number
+              contactId: contact.id,
+              name: contact.name || 'Unknown',
+              phoneNumber: phone.number || '',
+              phoneLabel: phone.label || '',
+              initials: getInitials(contact.name || 'Unknown'),
+              imageUri: contact.image?.uri
+            });
+          });
+        }
+      });
       
       if (loadMore) {
         setPageIndex(currentPageIndex);

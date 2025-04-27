@@ -51,15 +51,23 @@ const SimpleContactSelector = ({ onSelectContact }) => {
         sort: Contacts.SortTypes.FirstName
       });
       
-      // Filter to contacts with phone numbers
-      const contactsWithPhones = data
-        .filter(c => c.phoneNumbers && c.phoneNumbers.length > 0)
-        .map(contact => ({
-          id: contact.id,
-          name: contact.name || 'Unknown',
-          phoneNumber: contact.phoneNumbers[0]?.number || '',
-          initials: getInitials(contact.name || 'Unknown')
-        }));
+      // Filter to contacts with phone numbers and handle multiple phone numbers
+      const contactsWithPhones = [];
+      data.forEach(contact => {
+        if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+          // Create a separate entry for each phone number
+          contact.phoneNumbers.forEach((phone, phoneIndex) => {
+            contactsWithPhones.push({
+              id: `${contact.id}-${phoneIndex}`, // Create unique ID for each phone number
+              contactId: contact.id,
+              name: contact.name || 'Unknown',
+              phoneNumber: phone.number || '',
+              phoneLabel: phone.label || '',
+              initials: getInitials(contact.name || 'Unknown')
+            });
+          });
+        }
+      });
       
       if (contactsWithPhones.length === 0) {
         Alert.alert('No Contacts', 'No contacts with phone numbers found on your device.');
