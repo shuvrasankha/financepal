@@ -479,8 +479,8 @@ const ExpenseAnalysis = () => {
       }));
 
     return sortedCategories.map((item, index) => {
-      // Enhance color opacity in dark mode for better visibility
-      const iconBgOpacity = isDarkMode ? '33' : '22';
+      // Use higher opacity colors for better visibility in dark mode
+      const iconBgOpacity = isDarkMode ? '40' : '22';
       const color = chartColors[index % chartColors.length];
       
       return (
@@ -495,23 +495,26 @@ const ExpenseAnalysis = () => {
             </View>
             <View style={styles.categoryInfo}>
               <Text style={[styles.categoryName, { 
-                color: colors.dark,
-                fontWeight: isDarkMode ? '600' : '500' // Bolder in dark mode for better visibility
+                color: isDarkMode ? colors.white : colors.dark,
+                fontWeight: '600' // Bolder in dark mode for better visibility
               }]}>{item.category}</Text>
               <Text style={[styles.categoryAmount, { 
-                color: isDarkMode ? colors.white : colors.medium 
+                color: isDarkMode ? '#d1d5db' : colors.medium 
               }]}>₹{new Intl.NumberFormat('en-IN').format(item.amount)}</Text>
             </View>
-            <Text style={[styles.categoryPercentage, { 
-              color: isDarkMode ? '#e0e0e0' : colors.dark 
-            }]}>{item.percentage.toFixed(1)}%</Text>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: isDarkMode ? '700' : '600',
+              color: isDarkMode ? '#ffffff' : colors.dark, // Always white in dark mode for maximum contrast
+              opacity: isDarkMode ? 0.9 : 1
+            }}>{item.percentage.toFixed(1)}%</Text>
           </View>
           <View style={[styles.percentageBar, { 
-            backgroundColor: isDarkMode ? colors.borderDark : colors.light
+            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.15)' : colors.light
           }]}>
             <View style={[styles.percentageFill, { 
               width: `${item.percentage}%`,
-              backgroundColor: color,
+              backgroundColor: isDarkMode ? lightenColor(color, 15) : color,
               // Add minimum width for very small percentages
               minWidth: 4
             }]} />
@@ -534,6 +537,25 @@ const ExpenseAnalysis = () => {
       Others: 'apps-outline'
     };
     return icons[category] || 'pricetag-outline';
+  };
+
+  // Helper function to brighten colors for better dark mode visibility
+  const lightenColor = (hexColor, percent) => {
+    // Remove the hash if it exists
+    let hex = hexColor.replace('#', '');
+    
+    // Convert to RGB
+    let r = parseInt(hex.substring(0, 2), 16);
+    let g = parseInt(hex.substring(2, 4), 16);
+    let b = parseInt(hex.substring(4, 6), 16);
+    
+    // Increase each component by the percentage
+    r = Math.min(255, r + (255 - r) * (percent / 100));
+    g = Math.min(255, g + (255 - g) * (percent / 100));
+    b = Math.min(255, b + (255 - b) * (percent / 100));
+    
+    // Convert back to hex
+    return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
   };
 
   const renderBarChart = () => {
