@@ -393,6 +393,71 @@ function AddLoanForm({ onClose, onAdded, saveLoanToFirestore }) {
   );
 }
 
+// Add this function before the TransactionHistory component
+const exportTransactionsAsCSV = async (transactions, contact) => {
+  try {
+    // Create CSV header
+    let csv = "Type,Amount,Date,Due Date,Description,Status\n";
+    
+    // Add transaction data rows
+    transactions.forEach(t => {
+      const formattedDate = t.date ? new Date(t.date).toLocaleDateString('en-IN') : 'N/A';
+      const formattedDueDate = t.dueDate ? new Date(t.dueDate).toLocaleDateString('en-IN') : 'N/A';
+      
+      // Format status
+      let status = t.status === 'settled' ? 'Settled' : 'Active';
+      if (status === 'Active' && new Date(t.dueDate) < new Date()) {
+        status = 'Overdue';
+      }
+      
+      // Format description (escape any commas or quotes)
+      const description = t.description ? `"${t.description.replace(/"/g, '""')}"` : '';
+      
+      csv += `${t.loanType},${parseFloat(t.amount).toFixed(2)},${formattedDate},${formattedDueDate},${description},${status}\n`;
+    });
+    
+    // Generate file name based on contact name and current date
+    const filename = `${contact.replace(/\s+/g, '_')}_transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    // Check if we're on web or native
+    if (Platform.OS === 'web') {
+      // For web, create a download link
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // For native platforms, use Expo FileSystem and Sharing
+      const FileSystem = require('expo-file-system');
+      const Sharing = require('expo-sharing');
+      
+      // Create the CSV file in the app's temporary directory
+      const fileUri = FileSystem.documentDirectory + filename;
+      await FileSystem.writeAsStringAsync(fileUri, csv);
+      
+      // Share the file
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: `${contact}'s Transactions`,
+          UTI: 'public.comma-separated-values-text'
+        });
+      } else {
+        Alert.alert("Sharing not available", "Sharing is not available on your device");
+      }
+    }
+    
+    Alert.alert('Success', `Transactions for ${contact} exported successfully!`);
+  } catch (error) {
+    console.error('Error exporting CSV:', error);
+    Alert.alert('Export Failed', 'Failed to export transactions. Please try again.');
+  }
+};
+
 // Add TransactionHistory component
 function TransactionHistory({ contact, transactions, onClose, colors, shadows }) {
   const formatDate = (dateStr) => {
@@ -400,6 +465,9 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateStr).toLocaleDateString('en-IN', options);
   };
+  
+  // Extract isDarkMode from colors
+  const isDarkMode = colors.isDarkMode;
   
   // Add a state for tracking deleted items
   const [pendingDeletion, setPendingDeletion] = useState(null);
@@ -458,10 +526,21 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
   const sortedTransactions = [...transactions].sort((a, b) => {
     return new Date(b.date) - new Date(a.date);
   });
+  
+  // Calculate the net balance
+  const givenAmount = transactions
+    .filter(t => t.loanType === 'given')
+    .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    
+  const takenAmount = transactions
+    .filter(t => t.loanType === 'taken')
+    .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    
+  const netBalance = givenAmount - takenAmount;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar barStyle={colors.isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       
       {/* Header */}
       <View style={{ 
@@ -471,7 +550,8 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
         padding: 24,
         paddingTop: 46,
         borderBottomWidth: 1,
-        borderBottomColor: colors.isDarkMode ? colors.lighter : '#e5e7eb',
+        borderBottomColor: isDarkMode ? colors.light : '#e5e7eb',
+        backgroundColor: colors.background,
       }}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.dark }}>
@@ -481,16 +561,32 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
             {contact}
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => onClose()}
-          style={{
-            padding: 8,
-            borderRadius: 8,
-            backgroundColor: colors.isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2'
-          }}
-        >
-          <Ionicons name="close-circle-outline" size={24} color={colors.error} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          {/* Export button */}
+          <TouchableOpacity
+            onPress={() => exportTransactionsAsCSV(transactions, contact)}
+            style={{
+              padding: 8,
+              borderRadius: 8,
+              backgroundColor: isDarkMode ? 'rgba(21, 128, 61, 0.2)' : '#dcfce7',
+              marginRight: 8
+            }}
+          >
+            <Ionicons name="download-outline" size={24} color={colors.success} />
+          </TouchableOpacity>
+          
+          {/* Close button */}
+          <TouchableOpacity
+            onPress={() => onClose()}
+            style={{
+              padding: 8,
+              borderRadius: 8,
+              backgroundColor: isDarkMode ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2'
+            }}
+          >
+            <Ionicons name="close-circle-outline" size={24} color={colors.error} />
+          </TouchableOpacity>
+        </View>
       </View>
       
       {/* Transaction Summary */}
@@ -499,6 +595,8 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
         margin: 16,
         borderRadius: 12,
         padding: 16,
+        borderWidth: isDarkMode ? 1 : 0,
+        borderColor: isDarkMode ? colors.light : 'transparent',
         ...shadows.sm
       }}>
         <Text style={{ fontSize: 16, color: colors.medium, marginBottom: 8 }}>
@@ -510,10 +608,7 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
               Given
             </Text>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.success }}>
-              ₹{transactions
-                .filter(t => t.loanType === 'given')
-                .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)
-                .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₹{givenAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </Text>
           </View>
           <View>
@@ -521,10 +616,7 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
               Taken
             </Text>
             <Text style={{ fontSize: 18, fontWeight: 'bold', color: colors.error }}>
-              ₹{transactions
-                .filter(t => t.loanType === 'taken')
-                .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)
-                .toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₹{takenAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </Text>
           </View>
           <View>
@@ -534,10 +626,10 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
             <Text style={{ 
               fontSize: 18, 
               fontWeight: 'bold', 
-              color: transactions[0]?.pendingAmount > 0 ? colors.success : 
-                    transactions[0]?.pendingAmount < 0 ? colors.error : colors.medium 
+              color: netBalance > 0 ? colors.success : 
+                    netBalance < 0 ? colors.error : colors.medium 
             }}>
-              ₹{Math.abs(transactions[0]?.pendingAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              ₹{Math.abs(netBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </Text>
           </View>
         </View>
@@ -555,12 +647,16 @@ function TransactionHistory({ contact, transactions, onClose, colors, shadows })
         )}
         renderItem={({ item, index }) => (
           <View style={{ 
-            backgroundColor: index % 2 === 0 ? colors.card : colors.isDarkMode ? colors.lighter : '#f8fafc',
+            backgroundColor: index % 2 === 0 ? 
+              colors.card : 
+              isDarkMode ? 'rgba(99, 102, 241, 0.08)' : '#f8fafc',
             padding: 16,
             marginHorizontal: 16,
             marginBottom: 8,
             borderRadius: 12,
-            ...shadows.xs
+            borderWidth: isDarkMode ? 1 : 0,
+            borderColor: isDarkMode ? colors.light : 'transparent',
+            ...shadows.sm
           }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -959,7 +1055,7 @@ export default function Lending() {
                 Taken: <Text style={{ fontWeight: 'bold', color: colors.error }}>
                   ₹{Math.abs(Object.values(loanSummary)
                     .filter(amt => amt < 0)
-                    .reduce((sum, amt) => sum + amt, 0))
+                    .reduce((sum, amt) => sum + Math.abs(amt), 0))
                     .toLocaleString('en-IN')}
                 </Text>
               </Text>
@@ -976,17 +1072,19 @@ export default function Lending() {
             overflow: 'hidden', 
             borderRadius: 18, 
             backgroundColor: colors.card,
+            borderWidth: isDarkMode ? 1 : 0,
+            borderColor: isDarkMode ? colors.light : 'transparent',
             ...shadows.md
           }
         ]}> 
           <View style={{ 
-            backgroundColor: colors.card, 
+            backgroundColor: isDarkMode ? colors.lighter : colors.card, 
             paddingVertical: 18, 
             paddingHorizontal: 20, 
             borderTopLeftRadius: 18, 
             borderTopRightRadius: 18,
             borderBottomWidth: 1,
-            borderBottomColor: isDarkMode ? colors.lighter : '#e5e7eb'
+            borderBottomColor: isDarkMode ? colors.light : '#e5e7eb'
           }}>
             <Text style={{ 
               color: colors.dark, 
@@ -1015,11 +1113,11 @@ export default function Lending() {
               {/* Table Header */}
               <View style={{ 
                 flexDirection: 'row', 
-                backgroundColor: isDarkMode ? colors.lighter : '#f3f4f6', 
+                backgroundColor: isDarkMode ? 'rgba(99, 102, 241, 0.1)' : '#f3f4f6', 
                 paddingVertical: 14, 
                 paddingHorizontal: 18,
                 borderBottomWidth: 1, 
-                borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e5e7eb' 
+                borderBottomColor: isDarkMode ? colors.light : '#e5e7eb' 
               }}>
                 <Text style={{ 
                   flex: 2, 
@@ -1115,7 +1213,7 @@ export default function Lending() {
               refreshLoans();
             }
           }} 
-          colors={colors} 
+          colors={{ ...colors, isDarkMode }}
           shadows={shadows} 
         />
       </Modal>
