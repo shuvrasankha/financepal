@@ -77,6 +77,7 @@ const Expense = () => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [note, setNote] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
   
   // Date handling state
   const [expenseDate, setExpenseDate] = useState(new Date());
@@ -92,7 +93,7 @@ const Expense = () => {
   const [categorySummary, setCategorySummary] = useState({});
   
   // Add state for input highlighting
-  const [inputHighlight, setInputHighlight] = useState({ amount: false, category: false });
+  const [inputHighlight, setInputHighlight] = useState({ amount: false, category: false, paymentMethod: false });
 
   // Pagination
   const [pageSize] = useState(10); // Number of items per page
@@ -181,7 +182,7 @@ const Expense = () => {
     }
 
     let hasError = false;
-    const newHighlight = { amount: false, category: false };
+    const newHighlight = { amount: false, category: false, paymentMethod: false };
     if (!amount) {
       newHighlight.amount = true;
       hasError = true;
@@ -190,9 +191,13 @@ const Expense = () => {
       newHighlight.category = true;
       hasError = true;
     }
+    if (!paymentMethod) {
+      newHighlight.paymentMethod = true;
+      hasError = true;
+    }
     setInputHighlight(newHighlight);
     if (hasError) {
-      Alert.alert('Error', 'Amount and category are required.');
+      Alert.alert('Error', 'Amount, category, and payment method are required.');
       return;
     }
 
@@ -212,6 +217,7 @@ const Expense = () => {
           category,
           note,
           date: expenseDateStr,
+          paymentMethod,
         };
         
         await updateExpense(editingExpense.id, updatedExpense);
@@ -223,6 +229,7 @@ const Expense = () => {
           category,
           note,
           date: expenseDateStr,
+          paymentMethod,
         };
         
         await addExpense(newExpense);
@@ -244,6 +251,7 @@ const Expense = () => {
     setAmount('');
     setCategory('');
     setNote('');
+    setPaymentMethod('');
     setExpenseDate(new Date());
   };
 
@@ -279,6 +287,7 @@ const Expense = () => {
     setAmount(item.amount.toString());
     setCategory(item.category);
     setNote(item.note || '');
+    setPaymentMethod(item.paymentMethod || '');
     
     // Set the expense date from the item's date
     const itemDate = new Date(item.date);
@@ -520,7 +529,12 @@ const Expense = () => {
                 {viewDate.toDateString() === new Date().toDateString() ? "Today's Total" : "Daily Total"}
               </Text>
               <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary }}>
-                ₹{!showMonthView && filteredExpenses ? filteredExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0).toLocaleString('en-IN') : '0'}
+                ₹{(() => {
+                  const selectedDate = viewDate.toISOString().split('T')[0];
+                  const selectedDateExpenses = allExpenses.filter(exp => exp.date === selectedDate);
+                  const selectedDateTotal = selectedDateExpenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+                  return selectedDateTotal.toLocaleString('en-IN');
+                })()}
               </Text>
             </View>
           </View>
@@ -834,6 +848,56 @@ const Expense = () => {
                       textAlign: 'center'
                     }}>
                       {item}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Payment Method Selector */}
+              <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Payment Method</Text>
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between',
+                marginBottom: 20,
+                borderWidth: inputHighlight.paymentMethod ? 2 : 0,
+                borderColor: inputHighlight.paymentMethod ? colors.error : 'transparent',
+                borderRadius: 8,
+                padding: inputHighlight.paymentMethod ? 8 : 0
+              }}>
+                {['Cash', 'Online Transfer', 'Credit Card'].map((method) => (
+                  <TouchableOpacity
+                    key={method}
+                    style={{
+                      width: '32%',
+                      padding: 12,
+                      borderRadius: 8,
+                      backgroundColor: paymentMethod === method ? colors.primary : `${colors.card}80`,
+                      borderWidth: 1,
+                      borderColor: paymentMethod === method ? colors.primary : colors.light,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    onPress={() => {
+                      setPaymentMethod(method);
+                      if (inputHighlight.paymentMethod) setInputHighlight((prev) => ({ ...prev, paymentMethod: false }));
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={
+                        method === 'Cash' ? 'cash-outline' :
+                        method === 'Online Transfer' ? 'phone-portrait-outline' : 'card-outline'
+                      }
+                      size={22}
+                      color={paymentMethod === method ? colors.white : colors.primary}
+                      style={{ marginBottom: 4 }}
+                    />
+                    <Text style={{ 
+                      color: paymentMethod === method ? colors.white : colors.dark,
+                      fontSize: 14,
+                      fontWeight: paymentMethod === method ? '600' : '400'
+                    }}>
+                      {method}
                     </Text>
                   </TouchableOpacity>
                 ))}
