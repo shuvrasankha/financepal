@@ -7,8 +7,6 @@ import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import * as LocalAuthentication from 'expo-local-authentication';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/SettingsStyles';
 import BottomNavBar from './components/BottomNavBar';
 import { useTheme } from '../contexts/ThemeContext';
@@ -29,7 +27,6 @@ export default function Settings() {
   const [userProfile, setUserProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState('');
-  const [lockEnabled, setLockEnabled] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('csv');
   const [exportDateRange, setExportDateRange] = useState('all'); // 'all', 'currentMonth', 'currentYear', 'custom'
@@ -60,102 +57,6 @@ export default function Settings() {
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
   const commonStyles = Theme.getCommonStyles(isDarkMode);
   const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
-
-  // Check if app lock is enabled
-  useEffect(() => {
-    const checkAppLock = async () => {
-      try {
-        const appLockEnabled = await AsyncStorage.getItem('appLockEnabled');
-        console.log('App lock value in storage:', appLockEnabled);
-        
-        // Ensure value is strictly 'true' or reset it
-        if (appLockEnabled !== 'true' && appLockEnabled !== 'false') {
-          console.log('Resetting invalid app lock value');
-          await AsyncStorage.setItem('appLockEnabled', 'false');
-          setLockEnabled(false);
-        } else {
-          setLockEnabled(appLockEnabled === 'true');
-        }
-      } catch (err) {
-        console.log('Error checking app lock:', err);
-        // In case of error, make sure to reset to unlocked state
-        setLockEnabled(false);
-      }
-    };
-    
-    checkAppLock();
-  }, []);
-
-  // Toggle app lock
-  const handleToggleLock = async (value) => {
-    try {
-      // If enabling lock, check device compatibility first
-      if (value) {
-        // Check if device has biometric hardware
-        const compatible = await LocalAuthentication.hasHardwareAsync();
-        if (!compatible) {
-          console.log('Device does not support biometric authentication');
-          Alert.alert(
-            'Incompatible Device',
-            'Your device doesn\'t support biometric authentication.'
-          );
-          return;
-        }
-        
-        // Check if user has enrolled biometrics
-        const enrolled = await LocalAuthentication.isEnrolledAsync();
-        if (!enrolled) {
-          console.log('No biometrics enrolled on this device');
-          Alert.alert(
-            'Biometrics Not Set Up',
-            'Please set up biometric authentication in your device settings first.'
-          );
-          return;
-        }
-        
-        // Test the authentication to ensure it's working before enabling
-        const authTest = await LocalAuthentication.authenticateAsync({
-          promptMessage: 'Authenticate to enable app lock',
-          fallbackLabel: 'Use passcode',
-          disableDeviceFallback: false,
-        });
-        
-        console.log('Authentication test result:', authTest);
-        
-        if (!authTest.success) {
-          // Be more specific about auth failures vs cancellations
-          if (authTest.error === 'user_cancel') {
-            console.log('User cancelled authentication');
-            Alert.alert(
-              'Authentication Cancelled',
-              'You cancelled the authentication. App lock was not enabled.'
-            );
-          } else {
-            console.log('Authentication failed:', authTest.error);
-            Alert.alert(
-              'Authentication Failed',
-              'Could not verify biometrics. App lock was not enabled.'
-            );
-          }
-          return;
-        }
-      }
-      
-      // If we get here, either disabling or successfully authenticated
-      console.log('Setting appLockEnabled to:', value ? 'true' : 'false');
-      await AsyncStorage.setItem('appLockEnabled', value ? 'true' : 'false');
-      setLockEnabled(value);
-      
-      // Show confirmation to user
-      Alert.alert(
-        value ? 'Biometric Lock Enabled' : 'Biometric Lock Disabled',
-        value ? 'Your app is now protected with biometric authentication.' : 'Biometric authentication has been disabled.'
-      );
-    } catch (err) {
-      console.log('Error toggling app lock:', err);
-      Alert.alert('Error', 'Failed to toggle app lock. Please try again.');
-    }
-  };
 
   // Fetch user profile data
   useEffect(() => {
@@ -616,30 +517,6 @@ export default function Settings() {
               backgroundColor: colors.card,
               shadowColor: colors.dark,
             }]}>
-              <View style={newStyles.settingItem}>
-                <View style={newStyles.settingIconContainer}>
-                  <Ionicons name="lock-closed-outline" size={22} color={colors.primary} />
-                </View>
-                <View style={newStyles.settingTextContainer}>
-                  <Text style={[newStyles.settingTitle, { color: colors.dark }]}>
-                    Biometric Lock
-                  </Text>
-                  <Text style={[newStyles.settingDescription, { color: colors.medium }]}>
-                    Secure app with fingerprint or face ID
-                  </Text>
-                </View>
-                <Switch
-                  value={lockEnabled}
-                  onValueChange={handleToggleLock}
-                  trackColor={{ false: '#d1d5db', true: `${colors.primary}80` }}
-                  thumbColor={lockEnabled ? colors.primary : '#f3f4f6'}
-                  ios_backgroundColor="#d1d5db"
-                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-                />
-              </View>
-              
-              <View style={newStyles.separator} />
-              
               <TouchableOpacity 
                 style={newStyles.settingItem}
                 onPress={() => setShowPasswordModal(true)}

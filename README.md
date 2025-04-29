@@ -6,7 +6,6 @@ FinancePal is a cross-platform personal finance tracker built with [Expo](https:
 - Track daily and monthly expenses
 - Analyze spending by category and over time
 - Manage lending and borrowing with contacts
-- App lock with biometrics/PIN (Android & iOS)
 - Modern UI with bottom navigation
 - Firebase authentication and data storage
 
@@ -20,7 +19,7 @@ FinancePal is a cross-platform personal finance tracker built with [Expo](https:
    ```bash
    npx expo start
    ```
-   - For a custom app icon and lock features, use a development build:
+   - For a custom app icon, use a development build:
      ```bash
      npx expo run:android
      npx expo run:ios
@@ -50,7 +49,6 @@ FinancePal is a cross-platform personal finance tracker built with [Expo](https:
 - **Splash Screen:** `assets/images/splash-icon.png`
 
 ## Notes
-- App lock uses Expo LocalAuthentication and AsyncStorage.
 - Custom icons and splash screens only appear in standalone/dev builds, not in Expo Go.
 - For contact selection, the app requests device contact permissions.
 
