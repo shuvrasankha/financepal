@@ -1,0 +1,12 @@
+[build]
+  command = "./netlify.sh"
+  publish = "dist"
+  
+[build.environment]
+  NODE_VERSION = "20"
+
+# Handle SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

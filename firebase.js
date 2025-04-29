@@ -1,10 +1,15 @@
 // firebase.js
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-// Import necessary auth functions including persistence
+import { Platform } from 'react-native';
+
+// Import auth functions conditionally based on platform
 import { 
   initializeAuth, 
-  getReactNativePersistence 
+  getReactNativePersistence,
+  getAuth,
+  browserLocalPersistence,
+  setPersistence
 } from 'firebase/auth';
 import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -23,17 +28,25 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with React Native persistence
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-});
+// Initialize Auth with platform-specific persistence
+let auth;
+
+// Use different persistence mechanisms based on platform
+if (Platform.OS === 'web') {
+  // For web, use standard getAuth and set persistence separately
+  auth = getAuth(app);
+  setPersistence(auth, browserLocalPersistence)
+    .catch((error) => {
+      console.error("Error setting auth persistence for web:", error);
+    });
+} else {
+  // For native platforms, use React Native persistence
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+  });
+}
 
 // Initialize Firestore
 const db = getFirestore(app);
-
-// Remove the direct assignment to auth.settings
-// auth.settings = {
-//   appVerificationDisabledForTesting: false,
-// };
 
 export { db, auth };

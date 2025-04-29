@@ -27,7 +27,16 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "FinancePal Web",
+      "description": "Personal finance tracking web application",
+      "backgroundColor": "#ffffff",
+      "themeColor": "#6366f1",
+      "build": {
+        "babel": {
+          "include": ["expo-contacts"]
+        }
+      }
     },
     "plugins": [
       "expo-router",
