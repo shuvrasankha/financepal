@@ -9,19 +9,19 @@ import {
   Modal,
   StatusBar,
   Image,
-  Dimensions,
-  Platform
+  Platform,
+  useWindowDimensions,
+  Dimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, Timestamp, getDoc, doc } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import BottomNavBar from './components/BottomNavBar';
+import WebNavBar from './components/WebNavBar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Theme from '../constants/Theme';
 import { useTheme } from '../contexts/ThemeContext';
-
-const { width } = Dimensions.get('window');
 
 export default function Home() {
   const router = useRouter();
@@ -552,6 +552,11 @@ export default function Home() {
     );
   };
 
+  const dimensions = useWindowDimensions();
+  const isDesktop = dimensions.width >= 1024;
+  const isTablet = dimensions.width >= 768 && dimensions.width < 1024;
+  const isMobile = dimensions.width < 768;
+
   // Main render
   if (loading && !refreshing) {
     return (
@@ -569,9 +574,22 @@ export default function Home() {
   return (
     <>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor={colors.background} />
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
+      
+      {/* WebNavBar for tablet and desktop */}
+      {!isMobile && <WebNavBar />}
+      
+      <View style={{ 
+        flex: 1, 
+        backgroundColor: colors.background,
+        paddingTop: !isMobile ? 54 : 0, // Add padding for the WebNavBar height
+      }}>
         <ScrollView
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ 
+            paddingBottom: isMobile ? 120 : 40,
+            maxWidth: isDesktop ? 1200 : '100%',
+            alignSelf: isDesktop ? 'center' : undefined,
+            width: isDesktop ? '100%' : undefined,
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -580,7 +598,7 @@ export default function Home() {
           <View
             style={{
               backgroundColor: colors.background,
-              paddingTop: 60,
+              paddingTop: isMobile ? 60 : 30,
               paddingBottom: 30,
               paddingHorizontal: Theme.spacing.lg,
             }}
@@ -600,7 +618,7 @@ export default function Home() {
                   Welcome back
                 </Text>
                 <Text style={{
-                  fontSize: Theme.typography.fontSizes.xl + 2,
+                  fontSize: isDesktop ? Theme.typography.fontSizes.xxl : Theme.typography.fontSizes.xl + 2,
                   fontWeight: Theme.typography.fontWeights.bold,
                   color: colors.dark,
                 }}>
@@ -671,169 +689,329 @@ export default function Home() {
             </View>
           </View>
           
-          {/* Cards Section */}
+          {/* Main content layout - adaptive for desktop/tablet */}
           <View style={{ 
             paddingHorizontal: Theme.spacing.lg,
-            marginTop: Theme.spacing.md,
           }}>
-            <Text style={{
-              fontSize: Theme.typography.fontSizes.md,
-              fontWeight: Theme.typography.fontWeights.bold,
-              color: colors.dark,
-              marginBottom: Theme.spacing.md,
-            }}>
-              Financial Overview
-            </Text>
-            
-            <View style={{ 
-              flexDirection: 'row', 
-              flexWrap: 'wrap', 
-              justifyContent: 'space-between',
-            }}>
-              <FinancialCard type="expenses" amount={totals.expenses} />
-              <FinancialCard type="budget" amount={budgetTotal} />
-              <FinancialCard type="lent" amount={pendingLent} />
-              <FinancialCard type="investments" amount={investmentTotal} />
-            </View>
-          </View>
-          
-          {/* Recent Transactions */}
-          <View style={{ 
-            paddingHorizontal: Theme.spacing.lg,
-            marginTop: Theme.spacing.lg,
-            marginBottom: Theme.spacing.xl,
-          }}>
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: Theme.spacing.md,
-            }}>
-              <Text style={{
-                fontSize: Theme.typography.fontSizes.md,
-                fontWeight: Theme.typography.fontWeights.bold,
-                color: colors.dark,
-              }}>
-                Recent Transactions
-              </Text>
-              
-              <TouchableOpacity onPress={() => router.push('/expense')}>
-                <Text style={{
-                  fontSize: Theme.typography.fontSizes.sm,
-                  color: colors.primary,
-                  fontWeight: Theme.typography.fontWeights.semiBold,
-                }}>
-                  View All
-                </Text>
-              </TouchableOpacity>
-            </View>
-            
-            {recentTransactions.length > 0 ? (
-              recentTransactions.map((transaction, index) => (
-                <TransactionItem key={index} transaction={transaction} />
-              ))
-            ) : (
-              <View style={{
-                backgroundColor: colors.card,
-                padding: Theme.spacing.lg,
-                borderRadius: Theme.borderRadius.md,
-                alignItems: 'center',
-                ...shadows.sm,
-              }}>
-                <Ionicons name="receipt-outline" size={40} color={colors.light} />
-                <Text style={{
-                  marginTop: Theme.spacing.md,
-                  fontSize: Theme.typography.fontSizes.md,
-                  color: colors.medium,
-                  textAlign: 'center',
-                }}>
-                  No recent transactions found
-                </Text>
-                <TouchableOpacity 
-                  style={{
-                    marginTop: Theme.spacing.md,
-                    backgroundColor: colors.primary,
-                    paddingVertical: Theme.spacing.sm,
-                    paddingHorizontal: Theme.spacing.lg,
-                    borderRadius: Theme.borderRadius.md,
-                  }}
-                  onPress={() => router.push('/expense')}
-                >
+            {/* For desktop: 2-column layout */}
+            {isDesktop ? (
+              <View style={{ flexDirection: 'row', marginTop: Theme.spacing.md }}>
+                {/* Left column: Financial cards */}
+                <View style={{ flex: 1, marginRight: Theme.spacing.lg }}>
                   <Text style={{
-                    color: colors.white,
-                    fontWeight: Theme.typography.fontWeights.semiBold,
+                    fontSize: Theme.typography.fontSizes.lg,
+                    fontWeight: Theme.typography.fontWeights.bold,
+                    color: colors.dark,
+                    marginBottom: Theme.spacing.md,
                   }}>
-                    Add Transaction
+                    Financial Overview
                   </Text>
-                </TouchableOpacity>
+                  
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    flexWrap: 'wrap', 
+                    justifyContent: 'space-between',
+                    marginBottom: Theme.spacing.lg,
+                  }}>
+                    <FinancialCard type="expenses" amount={totals.expenses} />
+                    <FinancialCard type="budget" amount={budgetTotal} />
+                    <FinancialCard type="lent" amount={pendingLent} />
+                    <FinancialCard type="investments" amount={investmentTotal} />
+                  </View>
+                  
+                  {/* Financial Quote */}
+                  <View style={{ 
+                    marginVertical: Theme.spacing.md, 
+                    backgroundColor: colors.card,
+                    borderRadius: Theme.borderRadius.lg,
+                    overflow: 'hidden',
+                    shadowColor: Platform.OS === 'ios' ? '#00000033' : '#000',
+                    shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
+                    shadowOpacity: Platform.OS === 'ios' ? 0.25 : 0.05,
+                    shadowRadius: Platform.OS === 'ios' ? 4 : 3,
+                    elevation: 2,
+                  }}>
+                    <LinearGradient
+                      colors={[`${colors.primary}15`, colors.card]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                      style={{ padding: 20 }}
+                    >
+                      <View style={{ 
+                        width: 40, 
+                        height: 40, 
+                        borderRadius: 20,
+                        backgroundColor: colors.card,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        marginBottom: 14,
+                        shadowColor: Platform.OS === 'ios' ? '#00000040' : '#000',
+                        shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
+                        shadowOpacity: Platform.OS === 'ios' ? 0.2 : 0.1,
+                        shadowRadius: Platform.OS === 'ios' ? 3 : 2,
+                        elevation: 1,
+                      }}>
+                        <Ionicons name="bulb-outline" size={22} color={colors.primary} />
+                      </View>
+                      
+                      <Text style={{ 
+                        fontSize: 18,
+                        lineHeight: 26,
+                        color: colors.dark,
+                        fontStyle: 'italic',
+                        marginBottom: 12,
+                        fontWeight: '500',
+                        letterSpacing: 0.2,
+                      }}>
+                        "Wealth is not about having a lot of money; it's about having a lot of options."
+                      </Text>
+                      
+                      <Text style={{
+                        fontSize: 14,
+                        color: colors.medium,
+                        textAlign: 'right',
+                        fontWeight: '600'
+                      }}>
+                        – Chris Rock
+                      </Text>
+                    </LinearGradient>
+                  </View>
+                </View>
+                
+                {/* Right column: Transactions */}
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    fontSize: Theme.typography.fontSizes.lg,
+                    fontWeight: Theme.typography.fontWeights.bold,
+                    color: colors.dark,
+                    marginBottom: Theme.spacing.md,
+                  }}>
+                    Recent Transactions
+                  </Text>
+                  
+                  {recentTransactions.length > 0 ? (
+                    recentTransactions.map((transaction, index) => (
+                      <TransactionItem key={index} transaction={transaction} />
+                    ))
+                  ) : (
+                    <View style={{
+                      backgroundColor: colors.card,
+                      padding: Theme.spacing.lg,
+                      borderRadius: Theme.borderRadius.md,
+                      alignItems: 'center',
+                      ...shadows.sm,
+                    }}>
+                      <Ionicons name="receipt-outline" size={40} color={colors.light} />
+                      <Text style={{
+                        marginTop: Theme.spacing.md,
+                        fontSize: Theme.typography.fontSizes.md,
+                        color: colors.medium,
+                        textAlign: 'center',
+                      }}>
+                        No recent transactions found
+                      </Text>
+                      <TouchableOpacity 
+                        style={{
+                          marginTop: Theme.spacing.md,
+                          backgroundColor: colors.primary,
+                          paddingVertical: Theme.spacing.sm,
+                          paddingHorizontal: Theme.spacing.lg,
+                          borderRadius: Theme.borderRadius.md,
+                        }}
+                        onPress={() => router.push('/expense')}
+                      >
+                        <Text style={{
+                          color: colors.white,
+                          fontWeight: Theme.typography.fontWeights.semiBold,
+                        }}>
+                          Add Transaction
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
               </View>
+            ) : (
+              // For mobile and tablet: original stacked layout
+              <>
+                {/* Cards Section */}
+                <View style={{ marginTop: Theme.spacing.md }}>
+                  <Text style={{
+                    fontSize: Theme.typography.fontSizes.md,
+                    fontWeight: Theme.typography.fontWeights.bold,
+                    color: colors.dark,
+                    marginBottom: Theme.spacing.md,
+                  }}>
+                    Financial Overview
+                  </Text>
+                  
+                  <View style={{ 
+                    flexDirection: 'row', 
+                    flexWrap: 'wrap', 
+                    justifyContent: 'space-between',
+                  }}>
+                    {/* For tablet layout with 2x2 grid */}
+                    {isTablet ? (
+                      <>
+                        <View style={{ width: '48%' }}>
+                          <FinancialCard type="expenses" amount={totals.expenses} />
+                          <FinancialCard type="lent" amount={pendingLent} />
+                        </View>
+                        <View style={{ width: '48%' }}>
+                          <FinancialCard type="budget" amount={budgetTotal} />
+                          <FinancialCard type="investments" amount={investmentTotal} />
+                        </View>
+                      </>
+                    ) : (
+                      // Mobile 2x2 grid
+                      <>
+                        <FinancialCard type="expenses" amount={totals.expenses} />
+                        <FinancialCard type="budget" amount={budgetTotal} />
+                        <FinancialCard type="lent" amount={pendingLent} />
+                        <FinancialCard type="investments" amount={investmentTotal} />
+                      </>
+                    )}
+                  </View>
+                </View>
+                
+                {/* Recent Transactions */}
+                <View style={{ 
+                  marginTop: Theme.spacing.lg,
+                  marginBottom: Theme.spacing.xl,
+                }}>
+                  <View style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: Theme.spacing.md,
+                  }}>
+                    <Text style={{
+                      fontSize: Theme.typography.fontSizes.md,
+                      fontWeight: Theme.typography.fontWeights.bold,
+                      color: colors.dark,
+                    }}>
+                      Recent Transactions
+                    </Text>
+                    
+                    <TouchableOpacity onPress={() => router.push('/expense')}>
+                      <Text style={{
+                        fontSize: Theme.typography.fontSizes.sm,
+                        color: colors.primary,
+                        fontWeight: Theme.typography.fontWeights.semiBold,
+                      }}>
+                        View All
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {recentTransactions.length > 0 ? (
+                    recentTransactions.map((transaction, index) => (
+                      <TransactionItem key={index} transaction={transaction} />
+                    ))
+                  ) : (
+                    <View style={{
+                      backgroundColor: colors.card,
+                      padding: Theme.spacing.lg,
+                      borderRadius: Theme.borderRadius.md,
+                      alignItems: 'center',
+                      ...shadows.sm,
+                    }}>
+                      <Ionicons name="receipt-outline" size={40} color={colors.light} />
+                      <Text style={{
+                        marginTop: Theme.spacing.md,
+                        fontSize: Theme.typography.fontSizes.md,
+                        color: colors.medium,
+                        textAlign: 'center',
+                      }}>
+                        No recent transactions found
+                      </Text>
+                      <TouchableOpacity 
+                        style={{
+                          marginTop: Theme.spacing.md,
+                          backgroundColor: colors.primary,
+                          paddingVertical: Theme.spacing.sm,
+                          paddingHorizontal: Theme.spacing.lg,
+                          borderRadius: Theme.borderRadius.md,
+                        }}
+                        onPress={() => router.push('/expense')}
+                      >
+                        <Text style={{
+                          color: colors.white,
+                          fontWeight: Theme.typography.fontWeights.semiBold,
+                        }}>
+                          Add Transaction
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+                
+                {/* Financial Quote */}
+                <View style={{ 
+                  marginVertical: 10,
+                  backgroundColor: colors.card,
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  shadowColor: Platform.OS === 'ios' ? '#00000033' : '#000',
+                  shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
+                  shadowOpacity: Platform.OS === 'ios' ? 0.25 : 0.05,
+                  shadowRadius: Platform.OS === 'ios' ? 4 : 3,
+                  elevation: 2,
+                }}>
+                  <LinearGradient
+                    colors={[`${colors.primary}15`, colors.card]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={{ padding: 20 }}
+                  >
+                    <View style={{ 
+                      width: 40, 
+                      height: 40, 
+                      borderRadius: 20,
+                      backgroundColor: colors.card,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginBottom: 14,
+                      shadowColor: Platform.OS === 'ios' ? '#00000040' : '#000',
+                      shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
+                      shadowOpacity: Platform.OS === 'ios' ? 0.2 : 0.1,
+                      shadowRadius: Platform.OS === 'ios' ? 3 : 2,
+                      elevation: 1,
+                    }}>
+                      <Ionicons name="bulb-outline" size={22} color={colors.primary} />
+                    </View>
+                    
+                    <Text style={{ 
+                      fontSize: 18,
+                      lineHeight: 26,
+                      color: colors.dark,
+                      fontStyle: 'italic',
+                      marginBottom: 12,
+                      fontWeight: '500',
+                      letterSpacing: 0.2,
+                    }}>
+                      "Wealth is not about having a lot of money; it's about having a lot of options."
+                    </Text>
+                    
+                    <Text style={{
+                      fontSize: 14,
+                      color: colors.medium,
+                      textAlign: 'right',
+                      fontWeight: '600'
+                    }}>
+                      – Chris Rock
+                    </Text>
+                  </LinearGradient>
+                </View>
+              </>
             )}
-          </View>
-          
-          {/* Financial Quote */}
-          <View style={{ 
-            marginHorizontal: 20, 
-            marginVertical: 10,
-            backgroundColor: colors.card,
-            borderRadius: 16,
-            overflow: 'hidden',
-            // Improved iOS shadow properties
-            shadowColor: Platform.OS === 'ios' ? '#00000033' : '#000',
-            shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
-            shadowOpacity: Platform.OS === 'ios' ? 0.25 : 0.05,
-            shadowRadius: Platform.OS === 'ios' ? 4 : 3,
-            elevation: 2,
-          }}>
-            <LinearGradient
-              colors={[`${colors.primary}15`, colors.card]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={{ padding: 20 }}
-            >
-              <View style={{ 
-                width: 40, 
-                height: 40, 
-                borderRadius: 20,
-                backgroundColor: colors.card,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginBottom: 14,
-                // iOS-specific shadow for the icon circle
-                shadowColor: Platform.OS === 'ios' ? '#00000040' : '#000',
-                shadowOffset: {width: 0, height: Platform.OS === 'ios' ? 2 : 1},
-                shadowOpacity: Platform.OS === 'ios' ? 0.2 : 0.1,
-                shadowRadius: Platform.OS === 'ios' ? 3 : 2,
-                elevation: 1,
-              }}>
-                <Ionicons name="bulb-outline" size={22} color={colors.primary} />
-              </View>
-              
-              <Text style={{ 
-                fontSize: 18,
-                lineHeight: 26,
-                color: colors.dark,
-                fontStyle: 'italic',
-                marginBottom: 12,
-                fontWeight: '500',
-                letterSpacing: 0.2,
-              }}>
-                "Wealth is not about having a lot of money; it's about having a lot of options."
-              </Text>
-              
-              <Text style={{
-                fontSize: 14,
-                color: colors.medium,
-                textAlign: 'right',
-                fontWeight: '600'
-              }}>
-                – Chris Rock
-              </Text>
-            </LinearGradient>
           </View>
         </ScrollView>
         
         <YearSelector />
-        <BottomNavBar />
+        
+        {/* Only show BottomNavBar on mobile */}
+        {isMobile && <BottomNavBar />}
       </View>
     </>
   );

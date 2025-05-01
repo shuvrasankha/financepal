@@ -4,10 +4,6 @@ import { View, Text, ActivityIndicator, useColorScheme, TouchableOpacity } from 
 import { StyleSheet } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
-// Remove LocalAuthentication import
-// import * as LocalAuthentication from 'expo-local-authentication';
-// Remove AsyncStorage import if no longer needed elsewhere, or keep if used for other things
-// import AsyncStorage from '@react-native-async-storage/async-storage';
 import Theme from '../constants/Theme';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { ExpenseProvider } from '../contexts/ExpenseContext';
@@ -16,14 +12,15 @@ import { ErrorProvider } from '../contexts/ErrorContext';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
+import ResponsiveNavBar from './components/ResponsiveNavBar';
+import { Platform } from 'react-native';
 
 // Wrap the Stack with ThemeContext
 function AppNavigator() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // Remove locked state
-  // const [locked, setLocked] = useState(false);
   const { isDarkMode } = useTheme();
+  const isWeb = Platform.OS === 'web';
   
   // Get theme-specific colors and styles
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
@@ -33,14 +30,12 @@ function AppNavigator() {
     // Check authentication state
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
-      // Remove app lock logic
-      setLoading(false); // Directly set loading to false after auth check
+      setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
-  // Remove the locked screen logic
   if (loading) {
     // Show a simple loading indicator while checking auth state
     return (
@@ -50,7 +45,7 @@ function AppNavigator() {
     );
   }
 
-  return (
+  const StackNavigator = () => (
     <>
       <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false }}>
@@ -73,16 +68,24 @@ function AppNavigator() {
       </Stack>
     </>
   );
-}
 
-// ... rest of the file (styles, RootLayoutNav) remains the same
-// Make sure to remove the styles related to the locked screen if they exist
+  // For web, wrap the Stack with ResponsiveNavBar
+  if (isWeb && user) {
+    return (
+      <ResponsiveNavBar>
+        <StackNavigator />
+      </ResponsiveNavBar>
+    );
+  }
+  
+  // For non-web or non-authenticated, just return the Stack
+  return <StackNavigator />;
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Remove locked screen styles if they exist
 });
 
 export default function RootLayoutNav() {

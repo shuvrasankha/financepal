@@ -6,8 +6,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Theme from '../../constants/Theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
+import ResponsiveNavBar from './ResponsiveNavBar';
 
+// For backward compatibility, BottomNavBar is now just a wrapper around ResponsiveNavBar
 const BottomNavBar = () => {
+  // If this is web, we'll use the WebNavBar via ResponsiveNavBar
+  if (Platform.OS === 'web') {
+    return <ResponsiveNavBar />;
+  }
+  
+  // Otherwise, we'll continue to use the original BottomNavBar implementation
   const nav = useNavigation();
   const route = useRoute();
   const active = route.name;
