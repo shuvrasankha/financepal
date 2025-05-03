@@ -23,6 +23,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const ExpenseAnalysis = () => {
   const [loading, setLoading] = useState(true);
@@ -34,17 +35,25 @@ const ExpenseAnalysis = () => {
     nextMonth: { total: 0, categories: {} },
     nextThreeMonths: { total: 0, categories: {} }
   });
+  
+  // Add states for month/year selection
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  
   const [summaryData, setSummaryData] = useState({
     monthly: {
       data: [],
       total: 0,
       categories: {},
+      paymentMethods: {},
       monthlyChange: null
     },
     yearly: {
       data: [],
       total: 0,
-      categories: {}
+      categories: {},
+      paymentMethods: {}
     }
   });
   const { isDarkMode } = useTheme();
@@ -103,6 +112,13 @@ const ExpenseAnalysis = () => {
     fetchExpenses();
   }, [setError]);
 
+  // Add useEffect to refresh data when selected month changes
+  useEffect(() => {
+    if (expenses.length > 0) {
+      processDataForSelectedMonth(expenses);
+    }
+  }, [selectedMonth, selectedYear, expenses]);
+
   const resetData = () => {
     setSummaryData({
       monthly: {
@@ -120,18 +136,20 @@ const ExpenseAnalysis = () => {
   };
 
   const processData = (data) => {
-    const now = new Date();
+    const now = new Date(); // May 2, 2025
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
     // Monthly processing
     const monthlyData = Array(12).fill(0);
     const monthlyCategories = {};
+    const monthlyPaymentMethods = {};
     let monthlyTotal = 0;
 
     // Yearly processing
     const yearlyMap = new Map();
     const yearlyCategories = {};
+    const yearlyPaymentMethods = {};
     let yearlyTotal = 0;
 
     // Initialize last 5 years
@@ -145,12 +163,22 @@ const ExpenseAnalysis = () => {
 
       // Process monthly data
       if (expYear === currentYear) {
-        if (expMonth <= currentMonth) {
-          monthlyData[expMonth] += exp.amount;
+        monthlyData[expMonth] += exp.amount;
+        
+        // Add to monthly total if it's the current month
+        if (expMonth === currentMonth) {
           monthlyTotal += exp.amount;
-
+          
           if (exp.category) {
             monthlyCategories[exp.category] = (monthlyCategories[exp.category] || 0) + exp.amount;
+          }
+          
+          // Process payment method data for current month
+          if (exp.paymentMethod) {
+            monthlyPaymentMethods[exp.paymentMethod] = (monthlyPaymentMethods[exp.paymentMethod] || 0) + exp.amount;
+          } else {
+            // If no payment method is specified, categorize as "Unspecified"
+            monthlyPaymentMethods['Unspecified'] = (monthlyPaymentMethods['Unspecified'] || 0) + exp.amount;
           }
         }
       }
@@ -162,6 +190,13 @@ const ExpenseAnalysis = () => {
 
         if (exp.category) {
           yearlyCategories[exp.category] = (yearlyCategories[exp.category] || 0) + exp.amount;
+        }
+        
+        // Process payment method data for yearly view
+        if (exp.paymentMethod) {
+          yearlyPaymentMethods[exp.paymentMethod] = (yearlyPaymentMethods[exp.paymentMethod] || 0) + exp.amount;
+        } else {
+          yearlyPaymentMethods['Unspecified'] = (yearlyPaymentMethods['Unspecified'] || 0) + exp.amount;
         }
       }
     });
@@ -182,19 +217,72 @@ const ExpenseAnalysis = () => {
       total: Math.round(total * 100) / 100
     }));
 
+    // Log values for debugging
+    console.log('Current month expenses:', monthlyTotal);
+    console.log('Yearly total:', yearlyTotal);
+    console.log('Monthly data:', monthlyData);
+
     setSummaryData({
       monthly: {
         data: monthlyData,
         total: monthlyTotal,
         categories: monthlyCategories,
+        paymentMethods: monthlyPaymentMethods,
         monthlyChange
       },
       yearly: {
         data: yearlyData,
         total: yearlyTotal,
-        categories: yearlyCategories
+        categories: yearlyCategories,
+        paymentMethods: yearlyPaymentMethods
       }
     });
+  };
+
+  // Modified function to process data for the selected month
+  const processDataForSelectedMonth = (data) => {
+    // Monthly processing
+    const monthlyCategories = {};
+    const monthlyPaymentMethods = {};
+    let monthlyTotal = 0;
+
+    data.forEach(exp => {
+      const expYear = exp.date.getFullYear();
+      const expMonth = exp.date.getMonth();
+
+      // Only process data for the selected month and year
+      if (expYear === selectedYear && expMonth === selectedMonth) {
+        monthlyTotal += exp.amount;
+          
+        if (exp.category) {
+          monthlyCategories[exp.category] = (monthlyCategories[exp.category] || 0) + exp.amount;
+        }
+        
+        // Process payment method data for the selected month
+        if (exp.paymentMethod) {
+          monthlyPaymentMethods[exp.paymentMethod] = (monthlyPaymentMethods[exp.paymentMethod] || 0) + exp.amount;
+        } else {
+          // If no payment method is specified, categorize as "Unspecified"
+          monthlyPaymentMethods['Unspecified'] = (monthlyPaymentMethods['Unspecified'] || 0) + exp.amount;
+        }
+      }
+    });
+
+    console.log(`Expenses for ${fullMonths[selectedMonth]} ${selectedYear}:`, monthlyTotal);
+    
+    // Update only the monthly part of the summary data
+    setSummaryData(prev => ({
+      ...prev,
+      monthly: {
+        ...prev.monthly,
+        total: monthlyTotal,
+        categories: monthlyCategories,
+        paymentMethods: monthlyPaymentMethods,
+      }
+    }));
+
+    // Also update budget insights for the selected month
+    processBudgetInsightsForMonth(data, selectedYear, selectedMonth);
   };
 
   const processBudgetInsights = (expenses) => {
@@ -469,6 +557,96 @@ const ExpenseAnalysis = () => {
     }
   };
 
+  // Process budget insights for the selected month
+  const processBudgetInsightsForMonth = (expenses, year, month) => {
+    // Add 1 to month because getBudgetForCategory expects 1-indexed month (1-12)
+    const monthIndex = month + 1;
+    
+    // Calculate total budget
+    const totalBudget = getTotalBudgetForMonth(year, monthIndex);
+    
+    // Get expenses for selected month
+    const monthStart = new Date(year, month, 1); 
+    const monthEnd = new Date(year, month + 1, 0); // Last day of the month
+    
+    const selectedMonthExpenses = expenses.filter(exp => 
+      exp.date >= monthStart && exp.date <= monthEnd
+    );
+    
+    // Calculate total expenses for the month
+    const totalExpenses = selectedMonthExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    // Calculate budget performance (percentage of budget used)
+    const budgetPerformance = totalBudget > 0 ? (totalExpenses / totalBudget) * 100 : 0;
+    
+    // Analyze by category
+    const expensesByCategory = {};
+    selectedMonthExpenses.forEach(exp => {
+      if (exp.category) {
+        if (!expensesByCategory[exp.category]) {
+          expensesByCategory[exp.category] = 0;
+        }
+        expensesByCategory[exp.category] += exp.amount;
+      }
+    });
+    
+    // Compare expenses against budget by category
+    const categoriesComparison = [];
+    const overBudgetCategories = [];
+    const underBudgetCategories = [];
+    
+    Object.entries(expensesByCategory).forEach(([category, amount]) => {
+      const budget = getBudgetForCategory(category, year, monthIndex);
+      
+      if (budget) {
+        const budgetAmount = Number(budget.amount);
+        const percentUsed = (amount / budgetAmount) * 100;
+        const comparison = {
+          category,
+          budgetAmount,
+          actualAmount: amount,
+          percentUsed,
+          remaining: budgetAmount - amount,
+          status: percentUsed > 100 ? 'over' : percentUsed > 80 ? 'warning' : 'good'
+        };
+        
+        categoriesComparison.push(comparison);
+        
+        if (percentUsed > 100) {
+          overBudgetCategories.push(comparison);
+        } else {
+          underBudgetCategories.push(comparison);
+        }
+      } else {
+        // Category without a budget
+        const noBudgetItem = {
+          category,
+          budgetAmount: 0,
+          actualAmount: amount,
+          percentUsed: Infinity,
+          remaining: -amount,
+          status: 'noBudget'
+        };
+        
+        categoriesComparison.push(noBudgetItem);
+        overBudgetCategories.push(noBudgetItem);
+      }
+    });
+    
+    // Sort by percentage used (highest first)
+    categoriesComparison.sort((a, b) => b.percentUsed - a.percentUsed);
+    overBudgetCategories.sort((a, b) => b.percentUsed - a.percentUsed);
+    underBudgetCategories.sort((a, b) => b.percentUsed - a.percentUsed);
+    
+    setBudgetInsights({
+      totalBudget,
+      budgetPerformance,
+      categoriesComparison,
+      overBudgetCategories,
+      underBudgetCategories
+    });
+  };
+
   const renderCategoryList = (categories) => {
     const sortedCategories = Object.entries(categories)
       .sort(([, a], [, b]) => b - a)
@@ -524,6 +702,63 @@ const ExpenseAnalysis = () => {
     });
   };
 
+  const renderPaymentMethodList = (paymentMethods) => {
+    const sortedPaymentMethods = Object.entries(paymentMethods)
+      .sort(([, a], [, b]) => b - a)
+      .map(([method, amount]) => ({
+        method,
+        amount,
+        percentage: (amount / (viewMode === 'monthly' ? summaryData.monthly.total : summaryData.yearly.total) * 100)
+      }));
+
+    // Use a different color scheme for payment methods to distinguish from categories
+    const paymentMethodColors = ['#3b82f6', '#f97316', '#14b8a6', '#64748b'];
+
+    return sortedPaymentMethods.map((item, index) => {
+      // Use higher opacity colors for better visibility in dark mode
+      const iconBgOpacity = isDarkMode ? '40' : '22';
+      const color = paymentMethodColors[index % paymentMethodColors.length];
+      
+      return (
+        <View key={item.method} style={styles.categoryItem}>
+          <View style={styles.categoryHeader}>
+            <View style={[styles.categoryIcon, { backgroundColor: `${color}${iconBgOpacity}` }]}>
+              <Ionicons 
+                name={getPaymentMethodIcon(item.method)} 
+                size={20} 
+                color={color} 
+              />
+            </View>
+            <View style={styles.categoryInfo}>
+              <Text style={[styles.categoryName, { 
+                color: isDarkMode ? colors.white : colors.dark,
+                fontWeight: '600' 
+              }]}>{item.method}</Text>
+              <Text style={[styles.categoryAmount, { 
+                color: isDarkMode ? '#d1d5db' : colors.medium 
+              }]}>₹{new Intl.NumberFormat('en-IN').format(item.amount)}</Text>
+            </View>
+            <Text style={{
+              fontSize: 14,
+              fontWeight: isDarkMode ? '700' : '600',
+              color: isDarkMode ? '#ffffff' : colors.dark,
+              opacity: isDarkMode ? 0.9 : 1
+            }}>{item.percentage.toFixed(1)}%</Text>
+          </View>
+          <View style={[styles.percentageBar, { 
+            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.15)' : colors.light
+          }]}>
+            <View style={[styles.percentageFill, { 
+              width: `${item.percentage}%`,
+              backgroundColor: isDarkMode ? lightenColor(color, 15) : color,
+              minWidth: 4
+            }]} />
+          </View>
+        </View>
+      );
+    });
+  };
+
   const getCategoryIcon = (category) => {
     const icons = {
       Food: 'fast-food-outline',
@@ -537,6 +772,16 @@ const ExpenseAnalysis = () => {
       Others: 'apps-outline'
     };
     return icons[category] || 'pricetag-outline';
+  };
+
+  const getPaymentMethodIcon = (method) => {
+    const icons = {
+      'Cash': 'cash-outline',
+      'Online Transfer': 'phone-portrait-outline',
+      'Credit Card': 'card-outline',
+      'Unspecified': 'help-circle-outline'
+    };
+    return icons[method] || 'help-circle-outline';
   };
 
   // Helper function to brighten colors for better dark mode visibility
@@ -585,7 +830,9 @@ const ExpenseAnalysis = () => {
                   borderWidth: isDarkMode ? 1 : 0,
                   borderColor: isDarkMode ? '#a9a9ff' : 'transparent',
                 }
-              ]} />
+              ]}>
+                {/* Amount display removed */}
+              </View>
             </View>
             <Text style={[styles.barLabel, { 
               color: isDarkMode ? '#e0e0e0' : colors.medium,
@@ -642,8 +889,43 @@ const ExpenseAnalysis = () => {
         ) : (
           <>
             <View style={[styles.summaryCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
+              {/* Add month selector if in monthly view */}
+              {viewMode === 'monthly' && (
+                <View style={styles.monthSelector}>
+                  <TouchableOpacity 
+                    style={styles.monthSelectorButton}
+                    onPress={() => {
+                      // Logic to go to previous month
+                      const newMonth = selectedMonth === 0 ? 11 : selectedMonth - 1;
+                      const newYear = selectedMonth === 0 ? selectedYear - 1 : selectedYear;
+                      setSelectedMonth(newMonth);
+                      setSelectedYear(newYear);
+                    }}
+                  >
+                    <Ionicons name="chevron-back" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                  
+                  <Text style={[styles.monthSelectorText, { color: colors.dark }]}>
+                    {fullMonths[selectedMonth]} {selectedYear}
+                  </Text>
+                  
+                  <TouchableOpacity 
+                    style={styles.monthSelectorButton}
+                    onPress={() => {
+                      // Logic to go to next month
+                      const newMonth = selectedMonth === 11 ? 0 : selectedMonth + 1;
+                      const newYear = selectedMonth === 11 ? selectedYear + 1 : selectedYear;
+                      setSelectedMonth(newMonth);
+                      setSelectedYear(newYear);
+                    }}
+                  >
+                    <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+              
               <Text style={[styles.cardLabel, { color: colors.medium }]}>
-                {viewMode === 'monthly' ? 'Total Expenses This Year' : 'Total Expenses (5 Years)'}
+                {viewMode === 'monthly' ? `Total Expenses (${fullMonths[selectedMonth]})` : 'Total Expenses (5 Years)'}
               </Text>
               <Text style={[styles.totalAmount, { color: colors.dark }]}>
                 ₹{new Intl.NumberFormat('en-IN').format(
@@ -810,6 +1092,18 @@ const ExpenseAnalysis = () => {
                   viewMode === 'monthly' 
                     ? summaryData.monthly.categories 
                     : summaryData.yearly.categories
+                )}
+              </View>
+            </View>
+
+            {/* Payment Method Analysis Card */}
+            <View style={[styles.categoriesCard, { backgroundColor: colors.card, shadowColor: colors.primary }]}>
+              <Text style={[styles.cardLabel, { color: colors.medium }]}>Spending by Payment Method</Text>
+              <View style={styles.categoriesList}>
+                {renderPaymentMethodList(
+                  viewMode === 'monthly' 
+                    ? summaryData.monthly.paymentMethods 
+                    : summaryData.yearly.paymentMethods
                 )}
               </View>
             </View>
@@ -1088,10 +1382,20 @@ const styles = StyleSheet.create({
     width: '100%',
     borderTopLeftRadius: 4,
     borderTopRightRadius: 4,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   barLabel: {
     fontSize: 12,
     marginTop: 8,
+  },
+  barAmount: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  barAmountContainer: {
+    padding: 4,
+    paddingBottom: 6,
   },
   categoriesList: {
     marginTop: 8,
@@ -1321,6 +1625,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 4,
+  },
+  monthSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  monthSelectorButton: {
+    padding: 8,
+  },
+  monthSelectorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 8,
   },
 });
 

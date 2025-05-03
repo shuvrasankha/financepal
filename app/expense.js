@@ -32,7 +32,26 @@ const CATEGORY_ICONS = {
   Entertainment: 'musical-notes-outline',
   Health: 'medkit-outline',
   Education: 'school-outline',
+  Groceries: 'basket-outline',
+  Housing: 'home-outline',
+  Travel: 'airplane-outline',
+  Technology: 'laptop-outline',
+  Investments: 'trending-up-outline',
+  'Personal Care': 'body-outline',
+  Gifts: 'gift-outline',
+  Subscriptions: 'calendar-outline',
   Others: 'apps-outline',
+};
+
+// Define payment methods with their respective icons
+const PAYMENT_METHODS = {
+  'Cash': { icon: 'cash-outline', color: '#4CAF50' },
+  'Credit Card': { icon: 'card-outline', color: '#F44336' },
+  'Debit Card': { icon: 'card-outline', color: '#2196F3' },
+  'UPI': { icon: 'phone-portrait-outline', color: '#9C27B0' },
+  'Net Banking': { icon: 'laptop-outline', color: '#FF9800' }, 
+  'Mobile Wallet': { icon: 'wallet-outline', color: '#03A9F4' },
+  'Other': { icon: 'ellipsis-horizontal-outline', color: '#607D8B' }
 };
 
 const CATEGORIES = [
@@ -43,6 +62,14 @@ const CATEGORIES = [
   'Entertainment',
   'Health',
   'Education',
+  'Groceries',
+  'Housing',
+  'Travel',
+  'Technology',
+  'Investments',
+  'Personal Care',
+  'Gifts',
+  'Subscriptions',
   'Others',
 ];
 
@@ -116,13 +143,16 @@ const Expense = () => {
     if (allExpenses.length > 0) {
       // Always calculate monthly total for the selected month
       const startDate = new Date(viewYear, viewMonth, 1);
-      const endDate = new Date(viewYear, viewMonth + 1, 0);
-      const startDateStr = startDate.toISOString().split('T')[0];
-      const endDateStr = endDate.toISOString().split('T')[0];
+      const endDate = new Date(viewYear, viewMonth + 1, 0); // Last day of selected month
+      
       const monthlyExpenses = allExpenses.filter(expense => {
-        const expenseDate = expense.date;
-        return expenseDate >= startDateStr && expenseDate <= endDateStr;
+        // Parse the expense date string to a Date object for accurate comparison
+        const expenseDate = new Date(expense.date + 'T00:00:00');
+        
+        // Check if the expense date falls within the selected month
+        return expenseDate >= startDate && expenseDate <= endDate;
       });
+      
       const monthlyTotalCalc = monthlyExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
       setMonthlyTotal(monthlyTotalCalc);
 
@@ -857,6 +887,7 @@ const Expense = () => {
               <Text style={{ marginBottom: 8, fontSize: 18, color: colors.dark }}>Payment Method</Text>
               <View style={{ 
                 flexDirection: 'row', 
+                flexWrap: 'wrap',
                 justifyContent: 'space-between',
                 marginBottom: 20,
                 borderWidth: inputHighlight.paymentMethod ? 2 : 0,
@@ -864,11 +895,11 @@ const Expense = () => {
                 borderRadius: 8,
                 padding: inputHighlight.paymentMethod ? 8 : 0
               }}>
-                {['Cash', 'Online Transfer', 'Credit Card'].map((method) => (
+                {Object.keys(PAYMENT_METHODS).map((method) => (
                   <TouchableOpacity
                     key={method}
                     style={{
-                      width: '32%',
+                      width: '31%',
                       padding: 12,
                       borderRadius: 8,
                       backgroundColor: paymentMethod === method ? colors.primary : `${colors.card}80`,
@@ -876,6 +907,7 @@ const Expense = () => {
                       borderColor: paymentMethod === method ? colors.primary : colors.light,
                       alignItems: 'center',
                       justifyContent: 'center',
+                      marginBottom: 10,
                     }}
                     onPress={() => {
                       setPaymentMethod(method);
@@ -884,18 +916,16 @@ const Expense = () => {
                     activeOpacity={0.8}
                   >
                     <Ionicons
-                      name={
-                        method === 'Cash' ? 'cash-outline' :
-                        method === 'Online Transfer' ? 'phone-portrait-outline' : 'card-outline'
-                      }
+                      name={PAYMENT_METHODS[method].icon}
                       size={22}
-                      color={paymentMethod === method ? colors.white : colors.primary}
+                      color={paymentMethod === method ? colors.white : PAYMENT_METHODS[method].color}
                       style={{ marginBottom: 4 }}
                     />
                     <Text style={{ 
                       color: paymentMethod === method ? colors.white : colors.dark,
-                      fontSize: 14,
-                      fontWeight: paymentMethod === method ? '600' : '400'
+                      fontSize: 13,
+                      fontWeight: paymentMethod === method ? '600' : '400',
+                      textAlign: 'center'
                     }}>
                       {method}
                     </Text>
