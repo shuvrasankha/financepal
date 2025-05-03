@@ -613,15 +613,14 @@ export default function Home() {
                   width: 46,
                   height: 46,
                   borderRadius: 23,
-                  overflow: 'hidden',
+                  backgroundColor: `${colors.primary}15`,
+                  justifyContent: 'center',
+                  alignItems: 'center',
                   ...shadows.sm,
                 }}
                 onPress={() => router.push('/settings')}
               >
-                <Image
-                  source={{ uri: profilePic || generateInitialsImage() }}
-                  style={{ width: '100%', height: '100%' }}
-                />
+                <Ionicons name="settings-outline" size={22} color={colors.primary} />
               </TouchableOpacity>
             </View>
             

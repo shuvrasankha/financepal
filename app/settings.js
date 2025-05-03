@@ -476,7 +476,6 @@ export default function Settings() {
         {/* User Profile Card */}
         <View style={[newStyles.profileCard, { 
           backgroundColor: colors.card,
-          shadowColor: colors.dark,
         }]}>
           {profileLoading ? (
             <View style={newStyles.profileLoadingContainer}>
@@ -525,7 +524,6 @@ export default function Settings() {
             
             <View style={[newStyles.card, { 
               backgroundColor: colors.card,
-              shadowColor: colors.dark,
             }]}>
               <TouchableOpacity 
                 style={newStyles.settingItem}
@@ -580,7 +578,6 @@ export default function Settings() {
             
             <View style={[newStyles.card, { 
               backgroundColor: colors.card,
-              shadowColor: colors.dark,
             }]}>
               <View style={newStyles.settingItem}>
                 <View style={newStyles.settingIconContainer}>
@@ -614,7 +611,6 @@ export default function Settings() {
             
             <View style={[newStyles.card, { 
               backgroundColor: colors.card,
-              shadowColor: colors.dark,
             }]}>
               <View style={newStyles.settingItem}>
                 <View style={newStyles.settingIconContainer}>
@@ -668,7 +664,6 @@ export default function Settings() {
             
             <View style={[newStyles.card, { 
               backgroundColor: colors.card,
-              shadowColor: colors.dark,
             }]}>
               <TouchableOpacity 
                 style={newStyles.settingItem}
@@ -713,7 +708,6 @@ export default function Settings() {
           {/* Tips Card */}
           <View style={[newStyles.tipsCard, { 
             backgroundColor: isDarkMode ? colors.card : colors.card,
-            shadowColor: colors.dark,
           }]}>
             <View style={newStyles.tipsHeader}>
               <View style={newStyles.tipsIconContainer}>
@@ -1343,11 +1337,8 @@ const newStyles = StyleSheet.create({
     margin: 16,
     borderRadius: 20,
     padding: 20,
-    borderWidth: 0, // Changed from 1 to 0
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 0,
+    // Removed shadow properties
   },
   profileLoadingContainer: {
     height: 120,
@@ -1417,11 +1408,8 @@ const newStyles = StyleSheet.create({
   card: {
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 0, // Changed from 1 to 0
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    borderWidth: 0,
+    // Removed shadow properties
   },
   settingItem: {
     flexDirection: 'row',
@@ -1460,10 +1448,7 @@ const newStyles = StyleSheet.create({
     borderWidth: 0,
     backgroundColor: "#fff",
     overflow: "hidden",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    // Removed shadow properties
   },
   tipsHeader: {
     flexDirection: 'row',
@@ -1476,7 +1461,7 @@ const newStyles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#6366f1', // More like the purple in the reference
+    backgroundColor: '#6366f1', 
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1484,7 +1469,7 @@ const newStyles = StyleSheet.create({
   tipsTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#6366f1', // More like the purple in the reference
+    color: '#6366f1',
   },
   tipsList: {
     paddingHorizontal: 16,
@@ -1499,7 +1484,7 @@ const newStyles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#6366f1', // More like the purple in the reference
+    backgroundColor: '#6366f1',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -1507,7 +1492,7 @@ const newStyles = StyleSheet.create({
   tipText: {
     fontSize: 14,
     flex: 1,
-    color: '#4b5563', // Darker gray like in the reference
+    color: '#4b5563',
     lineHeight: 20,
   },
   logoutButton: {
@@ -1518,13 +1503,13 @@ const newStyles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 16,
     borderWidth: 0,
-    backgroundColor: '#f5e1e1', // Matches the light red in the reference
+    backgroundColor: '#f5e1e1',
   },
   logoutText: {
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 8,
-    color: '#ef4444', // Matches the red in the reference
+    color: '#ef4444',
   },
   copyrightText: {
     textAlign: 'center',
