@@ -19,7 +19,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import Theme from '../../constants/Theme';
 
 const SimpleContactSelector = ({ onSelectContact }) => {
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, suspendAppLock, resumeAppLock } = useTheme();
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
   const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
   
@@ -31,6 +31,10 @@ const SimpleContactSelector = ({ onSelectContact }) => {
   
   // Open the contact selector
   const openContactSelector = async () => {
+    // Suspend app lock before accessing contacts
+    suspendAppLock();
+    console.log('Suspended app lock for simple contact selection');
+    
     setModalVisible(true);
     setLoading(true);
     
@@ -40,6 +44,7 @@ const SimpleContactSelector = ({ onSelectContact }) => {
       if (status !== 'granted') {
         Alert.alert('Permission Denied', 'Please allow access to your contacts to use this feature.');
         setModalVisible(false);
+        resumeAppLock(); // Resume app lock if permission denied
         return;
       }
       
@@ -101,6 +106,9 @@ const SimpleContactSelector = ({ onSelectContact }) => {
       useNativeDriver: true
     }).start(() => {
       setModalVisible(false);
+      // Resume app lock after contact selection is complete
+      resumeAppLock();
+      console.log('Resumed app lock after simple contact selection');
     });
   };
   

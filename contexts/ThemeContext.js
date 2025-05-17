@@ -17,17 +17,23 @@ export const ThemeProvider = ({ children }) => {
   // State for theme mode
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [themePreference, setThemePreference] = useState('system');
+  const [isAppLockSuspended, setIsAppLockSuspended] = useState(false);
 
   // Load theme preference from storage
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
         const savedTheme = await AsyncStorage.getItem('theme_mode');
+        const savedThemePreference = await AsyncStorage.getItem('themePreference');
         if (savedTheme !== null) {
           setIsDarkMode(savedTheme === 'dark');
         } else {
           // Use device preference as default if no saved preference
           setIsDarkMode(deviceColorScheme === 'dark');
+        }
+        if (savedThemePreference) {
+          setThemePreference(savedThemePreference);
         }
       } catch (error) {
         console.log('Error loading theme preference:', error);
@@ -38,6 +44,15 @@ export const ThemeProvider = ({ children }) => {
 
     loadThemePreference();
   }, [deviceColorScheme]);
+
+  // Apply theme preference
+  useEffect(() => {
+    if (themePreference === 'system') {
+      setIsDarkMode(deviceColorScheme === 'dark');
+    } else {
+      setIsDarkMode(themePreference === 'dark');
+    }
+  }, [themePreference, deviceColorScheme]);
 
   // Save theme preference to storage
   const saveThemePreference = async (mode) => {
@@ -62,8 +77,27 @@ export const ThemeProvider = ({ children }) => {
     saveThemePreference(mode);
   };
 
+  // Temporarily suspend app lock (for contacts access)
+  const suspendAppLock = () => {
+    setIsAppLockSuspended(true);
+  };
+  
+  // Resume app lock after operations that require it
+  const resumeAppLock = () => {
+    setIsAppLockSuspended(false);
+  };
+
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ 
+        isDarkMode, 
+        toggleTheme, 
+        setTheme, 
+        themePreference,
+        isAppLockSuspended,
+        suspendAppLock,
+        resumeAppLock
+      }}
+    >
       {!isLoading && children}
     </ThemeContext.Provider>
   );

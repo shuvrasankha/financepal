@@ -125,12 +125,14 @@ const ExpenseAnalysis = () => {
         data: Array(12).fill(0),
         total: 0,
         categories: {},
+        paymentMethods: {},
         monthlyChange: null
       },
       yearly: {
         data: [],
         total: 0,
-        categories: {}
+        categories: {},
+        paymentMethods: {}
       }
     });
   };

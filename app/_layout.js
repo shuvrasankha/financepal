@@ -20,7 +20,7 @@ function AppNavigator() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [locked, setLocked] = useState(false);
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, isAppLockSuspended } = useTheme();
   
   const appState = useRef(AppState.currentState);
   const [appLockEnabled, setAppLockEnabled] = useState(false);
@@ -86,8 +86,14 @@ function AppNavigator() {
       if (user && appLockEnabled) {
         // App goes to background
         if (appState.current.match(/active/) && nextAppState.match(/inactive|background/)) {
-          console.log('App has gone to background, locking...');
-          setLocked(true);
+          console.log('App has gone to background, checking lock suspension status...');
+          // Only lock if app lock is not suspended (i.e., not accessing contacts)
+          if (!isAppLockSuspended) {
+            console.log('App lock is not suspended, locking app...');
+            setLocked(true);
+          } else {
+            console.log('App lock is suspended, not locking app (likely accessing contacts)');
+          }
         }
         
         // App comes back to foreground and is locked - authenticate
@@ -107,7 +113,7 @@ function AppNavigator() {
     return () => {
       subscription.remove();
     };
-  }, [user, appLockEnabled, locked]);
+  }, [user, appLockEnabled, locked, isAppLockSuspended]);
 
   // Check authentication state and app lock settings
   useEffect(() => {

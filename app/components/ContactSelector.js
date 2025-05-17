@@ -34,7 +34,7 @@ if (Platform.OS === 'android') {
 }
 
 const ContactSelector = ({ onSelectContact }) => {
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, suspendAppLock, resumeAppLock } = useTheme();
   const colors = isDarkMode ? Theme.dark.colors : Theme.light.colors;
   const shadows = isDarkMode ? Theme.shadowsDark : Theme.shadows;
   
@@ -102,6 +102,10 @@ const ContactSelector = ({ onSelectContact }) => {
   
   // Open modal and load contacts
   const openContactSelector = () => {
+    // Suspend app lock before accessing contacts
+    suspendAppLock();
+    console.log('Suspended app lock for contact selection');
+    
     setModalVisible(true);
     setPageIndex(0);
     setAllContactsLoaded(false);
@@ -135,6 +139,10 @@ const ContactSelector = ({ onSelectContact }) => {
       setModalVisible(false);
       setSearchQuery('');
       setSelectedContactId(null);
+      
+      // Resume app lock after contact selection is complete
+      resumeAppLock();
+      console.log('Resumed app lock after contact selection');
     });
   };
   
